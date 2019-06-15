@@ -15,6 +15,7 @@ module Mrbmacs
         if app.ext.lsp[lang] != nil
           if app.ext.lsp[lang].status == :stop
             app.ext.lsp[lang].start_server({'rootUri' => 'file://' + current_buffer.directory})
+            current_buffer.additional_info = app.ext.lsp[lang].server[:command] + ":" + app.ext.lsp[lang].status.to_s[0]
             if app.ext.lsp[lang].io != nil
               app.add_io_read_event(app.ext.lsp[lang].io) do |app, io|
                 app.lsp_read_message(io)
@@ -57,6 +58,9 @@ module Mrbmacs
         end
       end
     end
+    def self.lsp_uri_to_path(uri)
+      uri.gsub('file://','')
+    end
   end
 
   class Application
@@ -71,6 +75,7 @@ module Mrbmacs
               case v.request_buffer[id][:message]['method']
               when 'initialize'
                 v.initialized
+                @current_buffer.additional_info = v.server[:command] + ":" + v.status.to_s[0]
               when 'textDocument/completion'
                 if @frame.view_win.sci_autoc_active == 0 
                   len, candidates = lsp_get_completion_list(resp)
@@ -82,15 +87,19 @@ module Mrbmacs
                 $stderr.puts "unknown message"
               end
               v.request_buffer.delete(id)
+            else # request?
+              $stderr.puts resp['id']
             end
           else # notification
             case resp['method']
             when 'textDocument/publishDiagnostics'
-              resp['params']['diagnostics'].each do |d|
-                $stderr.puts d['message']
+              if @current_buffer.filename == ls_uri_to_path(resp['params']['uri'])
+                $stderr.puts "diagnostics!!!"
+                lsp_show_annotation(resp['params']['diagnostics'])
               end
             else
               $stderr.puts "unknown method #{resp['method']}"
+              $stderr.puts resp
             end
           end
           break
@@ -177,6 +186,17 @@ module Mrbmacs
         end
       }
       [input.length, candidates.sort.join(" ")]
+    end
+
+    def lsp_show_annotation(diagnostics)
+      @frame.view_win.sci_annotation_clearall
+      diagnostics.each do |d|
+        @frame.show_annotation(
+          d['range']['start']['line'] + 1,
+          d['range']['start']['character'] + 1,
+          d['message']
+          )
+      end
     end
   end
 end
