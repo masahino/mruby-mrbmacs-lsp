@@ -1,46 +1,85 @@
 module Mrbmacs
   class Extension
     attr_accessor :lsp
+    LSP_LIST_TYPE = 99
+    LSP_DEFAULT_CONFIG = {
+      "ruby" => {
+        "command" => "solargraph",
+        "options" => {"args" => ["stdio"]},
+      },
+      "cpp" => {
+        "command" => "clangd",
+        "options" => {},
+      },
+      "go" => {
+        "command" => "gopls",
+        "options" => {},
+      },
+      "python" => {
+        "command" => "pyls",
+        "options" => {},
+      },
+    }
+
     def self.register_lsp_client(app)
       app.ext.lsp = {}
-      app.ext.lsp["ruby"] = LSP::Client.new("solargraph", {"args" => ["stdio"]})
-      app.ext.lsp["cpp"] = LSP::Client.new("cquery", {"initializationOptions" => 
-          {"cacheDirectory" => "/tmp/cquery/cache"}})
-      app.ext.lsp["go"] = LSP::Client.new("gopls")
-      app.ext.lsp["python"] = LSP::Client.new("pyls")
-
+      config = LSP_DEFAULT_CONFIG
+      if app.ext.config['lsp'] != nil
+        config.merge! app.ext.config['lsp']
+      end
+      config.each do |l, v|
+        app.ext.lsp[l] = LSP::Client.new(v["command"], v["options"])
+      end
       app.add_command_event(:after_find_file) do |app, filename|
         current_buffer = app.current_buffer
         lang = current_buffer.mode.name
         if app.ext.lsp[lang] != nil
           if app.ext.lsp[lang].status == :stop
-            app.ext.lsp[lang].start_server({'rootUri' => 'file://' + current_buffer.directory})
-            current_buffer.additional_info = app.ext.lsp[lang].server[:command] + ":" + app.ext.lsp[lang].status.to_s[0]
+            app.ext.lsp[lang].start_server({
+                'rootUri' => 'file://' + current_buffer.directory,
+                'capabilities' => {
+                  'textDocument' => {
+                    'hover' => {
+                      'contentFormat' => 'plaintext',
+                    },
+                },
+                'trace' => 'verbose',
+                }
+              })
             if app.ext.lsp[lang].io != nil
               app.add_io_read_event(app.ext.lsp[lang].io) do |app, io|
                 app.lsp_read_message(io)
               end
             end
           end
-          if app.ext.lsp[lang].status == :running
+#          if app.ext.lsp[lang].status == :running
             app.ext.lsp[lang].didOpen({"textDocument" => LSP::Parameter::TextDocumentItem.new(filename)})
-          end
+#          end
+          current_buffer.additional_info = app.ext.lsp[lang].server[:command] + ":" + app.ext.lsp[lang].status.to_s[0]
+        end
+      end
+
+      app.add_command_event(:after_save_buffer) do |app, filename|
+        current_buffer = app.current_buffer
+        lang = current_buffer.mode.name
+        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
+          app.ext.lsp[lang].didSave({"textDocument" => LSP::Parameter::TextDocumentIdentifier.new(filename)})
         end
       end
 
       app.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
         lang = app.current_buffer.mode.name
-        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running and
+        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
           app.ext.lsp[lang].cancel_request_with_method('textDocument/completion')
           app.frame.view_win.sci_autoc_active == 0 
-          app.lsp_send_completion_request()
+          app.lsp_send_completion_request(scn)
         end
       end
 
       app.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
         lang = app.current_buffer.mode.name
         if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
-          if scn['modification_type'] & Scintilla::SC_MOD_INSERTTEXT > 0
+          if scn['modification_type'] & (Scintilla::SC_MOD_INSERTTEXT | Scintilla::SC_MOD_DELETETEXT) > 0
             pos = scn['position']
             line, col = app.get_current_line_col(pos)
             length = scn['length']
@@ -57,13 +96,63 @@ module Mrbmacs
           end
         end
       end
+
+      app.add_sci_event(Scintilla::SCN_DWELLSTART) do |app, scn|
+        lang = app.current_buffer.mode.name
+        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
+          line, col = app.get_current_line_col(scn['pos'])
+          td = LSP::Parameter::TextDocumentIdentifier.new(app.current_buffer.filename)
+          param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
+          app.ext.lsp[lang].hover(param)
+        end
+      end
+
+      app.add_sci_event(Scintilla::SCN_USERLISTSELECTION) do |app, scn|
+        if scn['list_type'] == LSP_LIST_TYPE
+          target_file, lines, col = scn['text'].split(",")
+          if app.current_buffer.filename != target_file
+            app.find_file(target_file)
+          end
+          app.frame.view_win.sci_gotopos(app.frame.view_win.sci_find_column(lines.to_i-1, col.to_i-1))
+        end
+      end
+
     end
+
     def self.lsp_uri_to_path(uri)
       uri.gsub('file://','')
     end
   end
 
   class Application
+    def lsp_goto_command(method)
+      lang = @current_buffer.mode.name
+      if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
+        td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+        line, col = get_current_line_col()
+        param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
+        ret = @ext.lsp[lang].send(method, param) do |resp|
+          list = resp['result'].map {|x|
+            sprintf("%s,%d,%d",
+              Extension::lsp_uri_to_path(x['uri']),
+              x['range']['start']['line'] + 1,
+              x['range']['start']['character'] + 1)
+          }
+          if list.size > 0
+            @frame.view_win.sci_userlist_show(Extension::LSP_LIST_TYPE, list.join(" "))
+          end
+        end
+      end
+    end
+
+    def lsp_goto_declaration()
+      lsp_goto_command("declaration")
+    end
+
+    def lsp_goto_definition()
+      lsp_goto_command("definition")
+    end
+
     def lsp_read_message(io)
       @ext.lsp.each_pair do |k, v|
         if io == v.io
@@ -74,21 +163,32 @@ module Mrbmacs
             if v.request_buffer[id] != nil 
               case v.request_buffer[id][:message]['method']
               when 'initialize'
-                v.initialized
+                v.initialized(resp)
                 @current_buffer.additional_info = v.server[:command] + ":" + v.status.to_s[0]
               when 'textDocument/completion'
-                if @frame.view_win.sci_autoc_active == 0 
+                if @frame.view_win.sci_autoc_active == 0 and @frame.view_win.sci_calltip_active == 0
                   len, candidates = lsp_get_completion_list(resp)
                   if len > 0 and candidates.length > 0
                     @frame.view_win.sci_autoc_show(len, candidates)
                   end
                 end
+              when 'textDocument/hover'
+                if frame.view_win.sci_autoc_active == 0
+                  if resp['result'] != nil and resp['result']['contents']['value'] != nil
+                    markup_kind = resp['result']['contents']['kind']
+                    value = resp['result']['contents']['value']
+                    if value.size > 0
+                      @frame.view_win.sci_calltip_show(@frame.view_win.sci_get_current_pos, value)
+                    end
+                  end
+                end
               else
-                $stderr.puts "unknown message"
+                @logger.info "unknown message"
+                @logger.info resp
               end
               v.request_buffer.delete(id)
             else # request?
-              $stderr.puts resp['id']
+              @logger.info resp
             end
           else # notification
             case resp['method']
@@ -98,8 +198,8 @@ module Mrbmacs
                 lsp_show_annotation(resp['params']['diagnostics'])
               end
             else
-              $stderr.puts "unknown method #{resp['method']}"
-              $stderr.puts resp
+              @logger.info "unknown method #{resp['method']}"
+              @logger.info resp
             end
           end
           break
@@ -136,13 +236,13 @@ module Mrbmacs
 #            [0, ""]
           end
         else
-          $stderr.puts "not yet initialized"
+          @logger.info "not yet initialized"
           [0, ""]
         end
       end
     end
 
-    def lsp_send_completion_request()
+    def lsp_send_completion_request(scn)
       view_win = @frame.view_win
       lang = @current_buffer.mode.name
       if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
@@ -154,14 +254,24 @@ module Mrbmacs
           input = line_text.split(" ").pop
           td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
           if input != nil and input.length > 0
-            id = @ext.lsp[lang].completion({"textDocument" => td,
+            @ext.lsp[lang].completion({"textDocument" => td,
 #                "position" => {"line" => line, "character" => col-1},
                 "position" => {"line" => line, "character" => col},
                 "context" => {"triggerKind" => 1}})
+
+#            @ext.lsp[lang].hover({
+#                "textDocument" => td, "position" => {"line" => line, "character" => col}})
           end
+          if @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil
+            if @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].include?(scn['ch'].chr)
+              @ext.lsp[lang].signatureHelp({
+                "textDocument" => td, "position" => {"line" => line, "character" => col}})
+            end
+          end
+
         end
       else
-          $stderr.puts "not yet initialized"
+        @logger.info "not yet initialized"
       end
     end
 
