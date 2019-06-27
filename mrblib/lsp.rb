@@ -125,34 +125,6 @@ module Mrbmacs
   end
 
   class Application
-    def lsp_goto_command(method)
-      lang = @current_buffer.mode.name
-      if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
-        td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-        line, col = get_current_line_col()
-        param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
-        ret = @ext.lsp[lang].send(method, param) do |resp|
-          list = resp['result'].map {|x|
-            sprintf("%s,%d,%d",
-              Extension::lsp_uri_to_path(x['uri']),
-              x['range']['start']['line'] + 1,
-              x['range']['start']['character'] + 1)
-          }
-          if list.size > 0
-            @frame.view_win.sci_userlist_show(Extension::LSP_LIST_TYPE, list.join(" "))
-          end
-        end
-      end
-    end
-
-    def lsp_goto_declaration()
-      lsp_goto_command("declaration")
-    end
-
-    def lsp_goto_definition()
-      lsp_goto_command("definition")
-    end
-
     def lsp_read_message(io)
       @ext.lsp.each_pair do |k, v|
         if io == v.io
@@ -182,6 +154,13 @@ module Mrbmacs
                     end
                   end
                 end
+              when 'textDocument/signatureHelp'
+                @logger.debug resp['result']['signatures']
+                if resp['result'] != nil and resp['result']['signatures'] != nil
+                  list = resp['result']['signatures'].map {|s| s['label']}.uniq
+                  @logger.debug list
+                  @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n"))
+                end
               else
                 @logger.info "unknown message"
                 @logger.info resp
@@ -203,41 +182,6 @@ module Mrbmacs
             end
           end
           break
-        end
-      end
-    end
-
-    def lsp_completion()
-      view_win = @frame.view_win
-      lang = @current_buffer.mode.name
-      if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
-        pos = view_win.sci_get_current_pos()
-        col = view_win.sci_get_column(pos)
-        if col > 0
-          line = view_win.sci_line_from_position(pos)
-          line_text = view_win.sci_get_line(line).chomp[0..col]
-          input = line_text.split(" ").pop
-          td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-          if input != nil and input.length > 0
-            id = @ext.lsp[lang].completion({"textDocument" => td,
-#                "position" => {"line" => line, "character" => col-1},
-                "position" => {"line" => line, "character" => col},
-                "context" => {"triggerKind" => 1}})
-            res = @ext.lsp[lang].wait_response(id)
-#            candidates = res['result']['items'].map { |h| h['label'] }
-            candidates = res['result']['items'].map { |h| 
-              if h['kind'] == 15
-                input + h['textEdit']['newText']
-              else
-                h['textEdit']['newText']
-              end
-            }
-            [input.length, candidates.sort.join(" ")]
-#            [0, ""]
-          end
-        else
-          @logger.info "not yet initialized"
-          [0, ""]
         end
       end
     end
