@@ -21,3 +21,33 @@ example of ~/.mrbmacsrc
   },
 }
 ```
+
+## Supported Protocol features
+
+### Language Features
+| Message | Status | Command
+----------|:------:|--------
+|completion     |Yes|-
+|completion resolve|No|
+|hover          |Yes|
+|signatureHelp  |Yes|
+|declaration    |Yes|lsp_goto_declaration|
+|definition     |Yes|lsp_goto_definition|
+|typeDefinition |No||
+|implementation |No||
+|references     |No||
+|documentHighlight|No|
+|documentSymbol |No|
+|codeAction |No|
+|codeLens |No|
+|codeLens resolve |No|
+|documentLink |No|
+|documentLink resolve |No|
+|documentColor |No|
+|colorPresentation |No|
+|formatting |No|
+|rangeFormatting |No|
+|onTypeFormatting |No|
+|rename |No|
+|prepareRename |No|
+|foldingRange|No|-
