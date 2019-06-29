@@ -45,8 +45,8 @@ example of ~/.mrbmacsrc
 |documentLink resolve |No|
 |documentColor |No|
 |colorPresentation |No|
-|formatting |No|
-|rangeFormatting |No|
+|formatting |Yes|lsp_formatting|
+|rangeFormatting |Yes|lsp_range_formatting|
 |onTypeFormatting |No|
 |rename |No|
 |prepareRename |No|
