@@ -129,10 +129,12 @@ module Mrbmacs
       @ext.lsp.each_pair do |k, v|
         if io == v.io
           resp = v.recv_message[1]
+          @logger.debug resp
           if resp['id'] != nil
             # request or response
             id = resp['id'].to_i
             if v.request_buffer[id] != nil 
+              @logger.debug v.request_buffer[id][:message]['method']
               case v.request_buffer[id][:message]['method']
               when 'initialize'
                 v.initialized(resp)
@@ -198,13 +200,19 @@ module Mrbmacs
           input = line_text.split(" ").pop
           td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
           if input != nil and input.length > 0
-            @ext.lsp[lang].completion({"textDocument" => td,
-#                "position" => {"line" => line, "character" => col-1},
+            if @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters'].include?(scn['ch'].chr)
+              trigger_kind = 2
+              trigger_char = scn['ch'].chr
+            else
+              trigger_kind = 1
+              trigger_char = ""
+            end
+            param = {"textDocument" => td,
                 "position" => {"line" => line, "character" => col},
-                "context" => {"triggerKind" => 1}})
+                "context" => {"triggerKind" => trigger_kind, "triggerCharacter" => trigger_char}}
+            @logger.debug param
+            @ext.lsp[lang].completion(param)
 
-#            @ext.lsp[lang].hover({
-#                "textDocument" => td, "position" => {"line" => line, "character" => col}})
           end
           if @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil
             if @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].include?(scn['ch'].chr)
