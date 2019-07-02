@@ -91,5 +91,24 @@ module Mrbmacs
         end
       end
     end
+
+    def lsp_rename()
+      @logger.debug "lsp_rename"
+      lang = @current_buffer.mode.name
+      if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
+        current_pos = @frame.view_win.sci_get_current_pos
+        word_start = @frame.view_win.sci_word_start_position(current_pos, false)
+        word_end = @frame.view_win.sci_word_end_position(current_pos, false)
+        word = @frame.view_win.sci_get_textrange(word_start, word_end)
+        @logger.debug "srtart = #{word_start}, end = #{word_end}, word = #{word}"
+        newstr = @frame.echo_gets("Replace string #{word} with: ", "")
+        td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+        line, col = get_current_line_col
+        param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
+        @ext.lsp[lang].rename(param) do |resp|
+          @logger.debug resp
+        end
+      end
+    end
   end
 end
