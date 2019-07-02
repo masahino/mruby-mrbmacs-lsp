@@ -19,9 +19,14 @@ module Mrbmacs
         "command" => "pyls",
         "options" => {},
       },
+      "html" => {
+        "command" => "html-languageserver",
+        "options" => {"args" => ["--stdio"]},
+      },
     }
 
     def self.register_lsp_client(app)
+      app.use_builtin_completion = false
       app.ext.lsp = {}
       config = LSP_DEFAULT_CONFIG
       if app.ext.config['lsp'] != nil
@@ -38,6 +43,7 @@ module Mrbmacs
             app.ext.lsp[lang].start_server({
                 'rootUri' => 'file://' + current_buffer.directory,
                 'capabilities' => {
+                  'workspace' => {},
                   'textDocument' => {
                     'hover' => {
                       'contentFormat' => 'plaintext',
@@ -174,8 +180,8 @@ module Mrbmacs
           else # notification
             case resp['method']
             when 'textDocument/publishDiagnostics'
-              if @current_buffer.filename == ls_uri_to_path(resp['params']['uri'])
-                $stderr.puts "diagnostics!!!"
+              @logger.info "publishDiagnostics"
+              if @current_buffer.filename == lsp_uri_to_path(resp['params']['uri'])
                 lsp_show_annotation(resp['params']['diagnostics'])
               end
             else
@@ -234,20 +240,18 @@ module Mrbmacs
       candidates = res['result']['items'].map { |h|
         str = ""
         if h['textEdit'] != nil
-          str = h['textEdit']['newText'].chop
+          str = h['textEdit']['newText'].strip
         elsif h['insertText'] != nil
-          str = h['insertText'].chop
+          str = h['insertText'].strip
         elsif h['label'] != nil
-          str = h['label'].chop
+          str = h['label'].strip
         end
-
-        if h['kind'] == 15
-          input + str
-        else
-          str
+        if !str.match(/^#{input}/)
+          str = input + str
         end
+        str
       }
-      [input.length, candidates.sort.join(" ")]
+      [input.length, candidates.sort.uniq.join(" ")]
     end
 
     def lsp_show_annotation(diagnostics)
