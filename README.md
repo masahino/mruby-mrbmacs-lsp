@@ -51,3 +51,7 @@ example of ~/.mrbmacsrc
 |rename |No|
 |prepareRename |No|
 |foldingRange|No|-
+
+## screenshot
+
+![formatting](https://user-images.githubusercontent.com/381912/60769054-694c6200-a106-11e9-8fed-f7cd0a10f105.gif)
