@@ -16,7 +16,7 @@ end
 assert('lsp default command') do
   app = setup_app
   Mrbmacs::Extension::register_lsp_client(app)
-  assert_equal 4, app.ext.lsp.size
+  assert_equal 5, app.ext.lsp.size
   assert_equal "solargraph", app.ext.lsp['ruby'].server[:command]
   assert_equal ['stdio'], app.ext.lsp['ruby'].server[:args]
 end
@@ -35,7 +35,7 @@ assert('lsp config') do
   }
 
   Mrbmacs::Extension::register_lsp_client(app)
-  assert_equal 5, app.ext.lsp.size
+  assert_equal 6, app.ext.lsp.size
   assert_equal "aaaaa", app.ext.lsp['ruby'].server[:command]
   assert_equal ['bbb','ccc'], app.ext.lsp['ruby'].server[:args]
 end
