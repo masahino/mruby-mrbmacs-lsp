@@ -237,20 +237,25 @@ module Mrbmacs
       line, col = get_current_line_col()
       line_text = get_current_line_text().chomp[0..col]
       input = line_text.split(" ").pop
-      candidates = res['result']['items'].map { |h|
-        str = ""
-        if h['textEdit'] != nil
-          str = h['textEdit']['newText'].strip
-        elsif h['insertText'] != nil
-          str = h['insertText'].strip
-        elsif h['label'] != nil
-          str = h['label'].strip
-        end
-        if !str.match(/^#{input}/)
-          str = input + str
-        end
-        str
-      }
+      escaped_input = Regexp.escape(input)
+      if res.has_key?('result') and res['result'].has_key?('items')
+        candidates = res['result']['items'].map { |h|
+          str = ""
+          if h['textEdit'] != nil
+            str = h['textEdit']['newText'].strip
+          elsif h['insertText'] != nil
+            str = h['insertText'].strip
+          elsif h['label'] != nil
+            str = h['label'].strip
+          end
+          if !str.match(/^#{escaped_input}/)
+            str = input + str
+          end
+          str
+        }
+      else
+        candidates = []
+      end
       [input.length, candidates.sort.uniq.join(" ")]
     end
 

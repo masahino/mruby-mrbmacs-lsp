@@ -1,17 +1,4 @@
-module Mrbmacs
-  class TestApp < Application
-    attr_accessor :ext
-    def initialize
-      @command_handler = {}
-      @sci_handler = {}
-      @ext = Extension.new
-    end
-  end
-end
-
-def setup_app
-  Mrbmacs::TestApp.new
-end
+require File.dirname(__FILE__) + '/test_helper.rb'
 
 assert('lsp default command') do
   app = setup_app
@@ -43,4 +30,21 @@ end
 assert('uri_to_path') do
   assert_equal "", Mrbmacs::Extension.lsp_uri_to_path("")
   assert_equal "/foo/bar/baz.txt", Mrbmacs::Extension.lsp_uri_to_path("file:///foo/bar/baz.txt")
+end
+
+assert('def lsp_get_completion_list') do
+  app = setup_app
+  app.get_current_line_col = [1, 1]
+  app.get_current_line_text = "hoge\n"
+  assert_equal [2, ''], app.lsp_get_completion_list({})
+  assert_equal [2, ''], app.lsp_get_completion_list({'result' => {}})
+  resp = {'result' => {
+      'items' => [
+        {'textEdit' => {'newText' => 'hogehoge'}},
+        {'textEdit' => {'newText' => 'hogege'}}
+        ]}}
+  assert_equal [2, 'hogege hogehoge'], app.lsp_get_completion_list(resp)
+  app.get_current_line_col = [1, 5]
+  app.get_current_line_text = 'hoge("'
+  assert_equal [6, 'hoge("hogege hoge("hogehoge'], app.lsp_get_completion_list(resp)
 end
