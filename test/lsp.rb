@@ -46,5 +46,5 @@ assert('def lsp_get_completion_list') do
   assert_equal [2, 'hogege hogehoge'], app.lsp_get_completion_list(resp)
   app.get_current_line_col = [1, 5]
   app.get_current_line_text = 'hoge("'
-  assert_equal [6, 'hoge("hogege hoge("hogehoge'], app.lsp_get_completion_list(resp)
+  assert_equal [6, 'hogege hogehoge'], app.lsp_get_completion_list(resp)
 end
