@@ -147,8 +147,9 @@ module Mrbmacs
                 @current_buffer.additional_info = v.server[:command] + ":" + v.status.to_s[0]
               when 'textDocument/completion'
                 if @frame.view_win.sci_autoc_active == 0 and @frame.view_win.sci_calltip_active == 0
-                  len, candidates = lsp_get_completion_list(resp)
-                  if len > 0 and candidates.length > 0
+                  @logger.debug v.request_buffer[id]
+                  len, candidates = lsp_get_completion_list(v.request_buffer[id][:message]['params'], resp)
+                  if candidates.length > 0
                     @frame.view_win.sci_autoc_show(len, candidates)
                   end
                 end
@@ -167,7 +168,9 @@ module Mrbmacs
                 if resp['result'] != nil and resp['result']['signatures'] != nil
                   list = resp['result']['signatures'].map {|s| s['label']}.uniq
                   @logger.debug list
-                  @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n"))
+                  if list.size > 0
+                    @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n"))
+                  end
                 end
               else
                 @logger.info "unknown message"
@@ -233,10 +236,14 @@ module Mrbmacs
       end
     end
 
-    def lsp_get_completion_list(res)
+    def lsp_get_completion_list(req, res)
       line, col = get_current_line_col()
       line_text = get_current_line_text().chomp[0..col]
-      input = line_text.split(" ").pop
+      input = if req['context'].has_key?('triggerKind') and req['context']['triggerKind'] == 2
+        ""
+      else
+        line_text.split(" ").pop
+      end
       if res.has_key?('result') and res['result'].has_key?('items')
         candidates = res['result']['items'].map { |h|
           str = ""
@@ -252,6 +259,7 @@ module Mrbmacs
       else
         candidates = []
       end
+      @logger.debug candidates
       [input.length, candidates.sort.uniq.join(" ")]
     end
 
