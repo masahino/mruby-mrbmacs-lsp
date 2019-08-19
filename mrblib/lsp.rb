@@ -75,9 +75,9 @@ module Mrbmacs
 
       app.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
         lang = app.current_buffer.mode.name
-        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
-          app.ext.lsp[lang].cancel_request_with_method('textDocument/completion')
+        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running and
           app.frame.view_win.sci_autoc_active == 0 
+          app.ext.lsp[lang].cancel_request_with_method('textDocument/completion')
           app.lsp_send_completion_request(scn)
         end
       end
@@ -239,7 +239,9 @@ module Mrbmacs
     def lsp_get_completion_list(req, res)
       line, col = get_current_line_col()
       line_text = get_current_line_text().chomp[0..col]
-      input = if req['context'].has_key?('triggerKind') and req['context']['triggerKind'] == 2
+      input = if req.has_key?('context') and
+        req['context'].has_key?('triggerKind') and
+        req['context']['triggerKind'] == 2
         ""
       else
         line_text.split(" ").pop
