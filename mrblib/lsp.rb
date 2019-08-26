@@ -45,9 +45,9 @@ module Mrbmacs
                 'capabilities' => {
                   'workspace' => {},
                   'textDocument' => {
-                    'hover' => {
-                      'contentFormat' => 'plaintext',
-                    },
+#                    'hover' => {
+#                      'contentFormat' => 'plaintext',
+#                    },
                 },
                 'trace' => 'verbose',
                 }
