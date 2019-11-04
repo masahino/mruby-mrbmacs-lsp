@@ -1,11 +1,17 @@
 module Mrbmacs
   class Application
-    def lsp_goto_command(method)
+    def lsp_goto_command(method, capability)
+      @logger.debug method
       lang = @current_buffer.mode.name
+      if @ext.lsp[lang].server_capabilities[capability] == false
+        @logger.debug "#{capability} is not supported"
+        return
+      end
       if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
         td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
         line, col = get_current_line_col()
         param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
+        @frame.echo_puts "[lsp] sending \"#{method}\" message..."
         ret = @ext.lsp[lang].send(method, param) do |resp|
           list = resp['result'].map {|x|
             sprintf("%s,%d,%d",
@@ -13,6 +19,8 @@ module Mrbmacs
               x['range']['start']['line'] + 1,
               x['range']['start']['character'] + 1)
           }
+          @logger.debug list
+          @frame.echo_puts "[lsp] receive \"#{method}\" response(#{list.size})"
           if list.size > 0
             @frame.view_win.sci_userlist_show(Extension::LSP_LIST_TYPE, list.join(" "))
           end
@@ -21,11 +29,23 @@ module Mrbmacs
     end
 
     def lsp_goto_declaration()
-      lsp_goto_command("declaration")
+        lsp_goto_command("declaration", "declarationProvider")
     end
 
     def lsp_goto_definition()
-      lsp_goto_command("definition")
+      lsp_goto_command("definition", "definitionProvider")
+    end
+
+    def lsp_goto_type_definition()
+      lsp_goto_command("typeDefinition", "typeDefinitionProvider")
+    end
+
+    def lsp_goto_implementation()
+      lsp_goto_command("implementation", "implementationProvider")
+    end
+
+    def lsp_goto_references()
+      lsp_goto_command("references", "referencesProvider")
     end
 
     def lsp_edit_buffer(text_edit)
