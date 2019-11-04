@@ -11,6 +11,7 @@ module Mrbmacs
       @sci_handler = {}
       @ext = Extension.new
       @logger = Logger.new(File.dirname('__FILE__') + 'test.log')
+      @command_list = {}
     end
   end
 
