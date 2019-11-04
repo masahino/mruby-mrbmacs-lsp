@@ -131,6 +131,15 @@ module Mrbmacs
   end
 
   class Application
+    def lsp_is_running?
+      lang = @current_buffer.mode.name
+      if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
+        true
+      else
+        false
+      end
+    end
+
     def lsp_read_message(io)
       @ext.lsp.each_pair do |k, v|
         if io == v.io
