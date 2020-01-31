@@ -56,6 +56,9 @@ module Mrbmacs
               app.add_io_read_event(app.ext.lsp[lang].io) do |app, io|
                 app.lsp_read_message(io)
               end
+              at_exit do
+                app.ext.lsp[lang].stop_server
+              end
             end
           end
 #          if app.ext.lsp[lang].status == :running
