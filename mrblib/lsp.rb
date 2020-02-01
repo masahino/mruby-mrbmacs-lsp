@@ -56,9 +56,6 @@ module Mrbmacs
               app.add_io_read_event(app.ext.lsp[lang].io) do |app, io|
                 app.lsp_read_message(io)
               end
-              at_exit do
-                app.ext.lsp[lang].stop_server
-              end
             end
           end
 #          if app.ext.lsp[lang].status == :running
@@ -75,6 +72,16 @@ module Mrbmacs
           app.ext.lsp[lang].didSave({"textDocument" => LSP::Parameter::TextDocumentIdentifier.new(filename)})
         end
       end
+
+      app.add_command_event(:before_save_buffers_kill_terminal) do |app|
+        app.ext.lsp.each do |lang, client|
+          if client.status != :stop
+            client.shutdown
+            client.stop_server
+          end
+        end
+      end
+
 
       app.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
         lang = app.current_buffer.mode.name
