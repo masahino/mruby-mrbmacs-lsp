@@ -3,10 +3,6 @@ module Mrbmacs
     attr_accessor :lsp
     LSP_LIST_TYPE = 99
     LSP_DEFAULT_CONFIG = {
-      "ruby" => {
-        "command" => "solargraph",
-        "options" => {"args" => ["stdio"]},
-      },
       "cpp" => {
         "command" => "clangd",
         "options" => {},
@@ -15,13 +11,21 @@ module Mrbmacs
         "command" => "gopls",
         "options" => {},
       },
+      "html" => {
+        "command" => "html-languageserver",
+        "options" => {"args" => ["--stdio"]},
+      },
       "python" => {
         "command" => "pyls",
         "options" => {},
       },
-      "html" => {
-        "command" => "html-languageserver",
-        "options" => {"args" => ["--stdio"]},
+      "ruby" => {
+        "command" => "solargraph",
+        "options" => {"args" => ["stdio"]},
+      },
+      "rust" => {
+        "command" => "rls",
+        "options" => {},
       },
     }
 
@@ -154,19 +158,19 @@ module Mrbmacs
       @ext.lsp.each_pair do |k, v|
         if io == v.io
           resp = v.recv_message[1]
-          @logger.debug resp
+          @logger.debug resp.to_s
           if resp['id'] != nil
             # request or response
             id = resp['id'].to_i
             if v.request_buffer[id] != nil 
-              @logger.debug v.request_buffer[id][:message]['method']
+              @logger.debug v.request_buffer[id][:message]['method'].to_s
               case v.request_buffer[id][:message]['method']
               when 'initialize'
                 v.initialized(resp)
                 @current_buffer.additional_info = v.server[:command] + ":" + v.status.to_s[0]
               when 'textDocument/completion'
                 if @frame.view_win.sci_autoc_active == 0 and @frame.view_win.sci_calltip_active == 0
-                  @logger.debug v.request_buffer[id]
+                  @logger.debug v.request_buffer[id].to_s
                   len, candidates = lsp_get_completion_list(v.request_buffer[id][:message]['params'], resp)
                   if candidates.length > 0
                     @frame.view_win.sci_autoc_show(len, candidates)
@@ -183,21 +187,21 @@ module Mrbmacs
                   end
                 end
               when 'textDocument/signatureHelp'
-                @logger.debug resp['result']['signatures']
+                @logger.debug resp['result']['signatures'].to_s
                 if resp['result'] != nil and resp['result']['signatures'] != nil
                   list = resp['result']['signatures'].map {|s| s['label']}.uniq
-                  @logger.debug list
+                  @logger.debug list.to_s
                   if list.size > 0
                     @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n"))
                   end
                 end
               else
                 @logger.info "unknown message"
-                @logger.info resp
+                @logger.info resp.to_s
               end
               v.request_buffer.delete(id)
             else # request?
-              @logger.info resp
+              @logger.info resp.to_s
             end
           else # notification
             case resp['method']
@@ -208,7 +212,7 @@ module Mrbmacs
               end
             else
               @logger.info "unknown method #{resp['method']}"
-              @logger.info resp
+              @logger.info resp.to_s
             end
           end
           break
@@ -237,12 +241,14 @@ module Mrbmacs
             end
             param = {"textDocument" => td,
                 "position" => {"line" => line, "character" => col},
-                "context" => {"triggerKind" => trigger_kind, "triggerCharacter" => trigger_char}}
-            @logger.debug param
+                "context" => {"triggerKind" => trigger_kind, "triggerCharacter" => trigger_char},
+            }
+            @logger.debug param.to_s
             @ext.lsp[lang].completion(param)
 
           end
-          if @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil
+          if @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil and
+            @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
             if @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].include?(scn['ch'].chr)
               @ext.lsp[lang].signatureHelp({
                 "textDocument" => td, "position" => {"line" => line, "character" => col}})
@@ -265,8 +271,14 @@ module Mrbmacs
       else
         line_text.split(" ").pop
       end
-      if res.has_key?('result') and res['result'].has_key?('items')
-        candidates = res['result']['items'].map { |h|
+      if res.has_key?('result')
+        items = if res['result'].is_a?(Hash)
+          res['result']['items']
+        else
+          res['result']
+        end
+#        candidates = res['result']['items'].map { |h|
+        candidates = items.map { |h|
           str = ""
           if h['textEdit'] != nil
             str = h['textEdit']['newText'].strip
@@ -280,7 +292,7 @@ module Mrbmacs
       else
         candidates = []
       end
-      @logger.debug candidates
+      @logger.debug candidates.to_s
       [input.length, candidates.sort.uniq.join(" ")]
     end
 
