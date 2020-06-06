@@ -272,10 +272,13 @@ module Mrbmacs
         line_text.split(" ").pop
       end
       if res.has_key?('result')
-        items = if res['result'].is_a?(Hash)
-          res['result']['items']
-        else
-          res['result']
+        items = []
+        if res['result'].is_a?(Hash)
+          if res['result'].has_key?('items')
+            items = res['result']['items']
+          end
+        elsif res['result'].is_a?(Array)
+          items = res['result']
         end
 #        candidates = res['result']['items'].map { |h|
         candidates = items.map { |h|
