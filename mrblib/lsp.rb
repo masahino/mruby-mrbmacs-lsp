@@ -15,9 +15,21 @@ module Mrbmacs
         "command" => "html-languageserver",
         "options" => {"args" => ["--stdio"]},
       },
+      "javascript" => {
+        "command" => "typescript-language-server",
+        "options" => {"args" => ["--stdio"]},
+      },
+      "perl" => {
+        "command" => "perl",
+        "options" => {"args" => ['-MPerl::LanguageServer', '-e', '"Perl::LanguageServer->run"']},
+      },
       "python" => {
         "command" => "pyls",
         "options" => {},
+      },
+      "r" => {
+        "command" => "R",
+        "options" => {"args" => ['--slave', '-e', 'languageserver::run\(\)']},
       },
       "ruby" => {
         "command" => "solargraph",
@@ -52,8 +64,8 @@ module Mrbmacs
 #                    'hover' => {
 #                      'contentFormat' => 'plaintext',
 #                    },
-                },
-                'trace' => 'verbose',
+                  },
+                  'trace' => 'verbose',
                 }
               })
             if app.ext.lsp[lang].io != nil
@@ -86,20 +98,22 @@ module Mrbmacs
         end
       end
 
-
       app.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
         lang = app.current_buffer.mode.name
-        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running and
-          app.frame.view_win.sci_autoc_active == 0 
-          app.ext.lsp[lang].cancel_request_with_method('textDocument/completion')
-          app.lsp_send_completion_request(scn)
+        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
+          app.lsp_sync_text
+          if app.frame.view_win.sci_autoc_active == 0
+            app.ext.lsp[lang].cancel_request_with_method('textDocument/completion')
+            app.lsp_send_completion_request(scn)
+          end
         end
       end
 
       app.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
         lang = app.current_buffer.mode.name
         if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
-          if scn['modification_type'] & (Scintilla::SC_MOD_INSERTTEXT | Scintilla::SC_MOD_DELETETEXT) > 0
+#          if scn['modification_type'] & (Scintilla::SC_MOD_INSERTTEXT | Scintilla::SC_MOD_DELETETEXT) > 0
+          if scn['modification_type'] > 0
             pos = scn['position']
             line, col = app.get_current_line_col(pos)
             length = scn['length']
@@ -136,11 +150,6 @@ module Mrbmacs
           app.frame.view_win.sci_gotopos(app.frame.view_win.sci_find_column(lines.to_i-1, col.to_i-1))
         end
       end
-
-    end
-
-    def self.lsp_uri_to_path(uri)
-      uri.gsub('file://','')
     end
   end
 
@@ -152,6 +161,10 @@ module Mrbmacs
       else
         false
       end
+    end
+
+    def lsp_uri_to_path(uri)
+      uri.gsub('file://','')
     end
 
     def lsp_read_message(io)
@@ -211,7 +224,7 @@ module Mrbmacs
                 lsp_show_annotation(resp['params']['diagnostics'])
               end
             else
-              @logger.info "unknown method #{resp['method']}"
+              @logger.info "unknown method #{resp.to_s}"
               @logger.info resp.to_s
             end
           end
@@ -232,29 +245,27 @@ module Mrbmacs
           input = line_text.split(" ").pop
           td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
           if input != nil and input.length > 0
-            if @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters'].include?(scn['ch'].chr)
-              trigger_kind = 2
-              trigger_char = scn['ch'].chr
+            if @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil and
+              @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil and
+              @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].include?(scn['ch'].chr("UTF-8"))
+              @ext.lsp[lang].signatureHelp({
+                  "textDocument" => td, "position" => {"line" => line, "character" => col}})
             else
-              trigger_kind = 1
-              trigger_char = ""
-            end
-            param = {"textDocument" => td,
+              if @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters'].include?(scn['ch'].chr)
+                trigger_kind = 2
+                trigger_char = scn['ch'].chr
+              else
+                trigger_kind = 1
+                trigger_char = ""
+              end
+              param = {"textDocument" => td,
                 "position" => {"line" => line, "character" => col},
                 "context" => {"triggerKind" => trigger_kind, "triggerCharacter" => trigger_char},
-            }
-            @logger.debug param.to_s
-            @ext.lsp[lang].completion(param)
-
-          end
-          if @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil and
-            @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
-            if @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].include?(scn['ch'].chr)
-              @ext.lsp[lang].signatureHelp({
-                "textDocument" => td, "position" => {"line" => line, "character" => col}})
+              }
+              @logger.debug param.to_s
+              @ext.lsp[lang].completion(param)
             end
           end
-
         end
       else
         @logger.info "not yet initialized"
