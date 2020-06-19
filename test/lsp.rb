@@ -3,7 +3,7 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 assert('lsp default command') do
   app = setup_app
   Mrbmacs::Extension::register_lsp_client(app)
-  assert_equal 6, app.ext.lsp.size
+  assert_equal 9, app.ext.lsp.size
   assert_equal "solargraph", app.ext.lsp['ruby'].server[:command]
   assert_equal ['stdio'], app.ext.lsp['ruby'].server[:args]
 end
@@ -22,14 +22,15 @@ assert('lsp config') do
   }
 
   Mrbmacs::Extension::register_lsp_client(app)
-  assert_equal 7, app.ext.lsp.size
+  assert_equal 10, app.ext.lsp.size
   assert_equal "aaaaa", app.ext.lsp['ruby'].server[:command]
   assert_equal ['bbb','ccc'], app.ext.lsp['ruby'].server[:args]
 end
 
 assert('uri_to_path') do
-  assert_equal "", Mrbmacs::Extension.lsp_uri_to_path("")
-  assert_equal "/foo/bar/baz.txt", Mrbmacs::Extension.lsp_uri_to_path("file:///foo/bar/baz.txt")
+  app = setup_app
+  assert_equal "", app.lsp_uri_to_path("")
+  assert_equal "/foo/bar/baz.txt", app.lsp_uri_to_path("file:///foo/bar/baz.txt")
 end
 
 assert('def lsp_get_completion_list') do
