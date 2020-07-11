@@ -4,7 +4,7 @@ module Mrbmacs
     LSP_LIST_TYPE = 99
     LSP_DEFAULT_CONFIG = {
       "cpp" => {
-        "command" => "clangd",
+        "command" => "ccls",
         "options" => {},
       },
       "go" => {
@@ -52,12 +52,11 @@ module Mrbmacs
         app.ext.lsp[l] = LSP::Client.new(v["command"], v["options"])
       end
       app.add_command_event(:after_find_file) do |app, filename|
-        current_buffer = app.current_buffer
-        lang = current_buffer.mode.name
+        lang = app.current_buffer.mode.name
         if app.ext.lsp[lang] != nil
           if app.ext.lsp[lang].status == :stop
             app.ext.lsp[lang].start_server({
-                'rootUri' => 'file://' + current_buffer.directory,
+                'rootUri' => 'file://' + app.current_buffer.directory,
                 'capabilities' => {
                   'workspace' => {},
                   'textDocument' => {
@@ -77,14 +76,13 @@ module Mrbmacs
 #          if app.ext.lsp[lang].status == :running
             app.ext.lsp[lang].didOpen({"textDocument" => LSP::Parameter::TextDocumentItem.new(filename)})
 #          end
-          current_buffer.additional_info = app.ext.lsp[lang].server[:command] + ":" + app.ext.lsp[lang].status.to_s[0]
+          app.current_buffer.additional_info = app.ext.lsp[lang].server[:command] + ":" + app.ext.lsp[lang].status.to_s[0]
         end
       end
 
       app.add_command_event(:after_save_buffer) do |app, filename|
-        current_buffer = app.current_buffer
-        lang = current_buffer.mode.name
-        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
+        lang = app.current_buffer.mode.name
+        if app.lsp_is_running?
           app.ext.lsp[lang].didSave({"textDocument" => LSP::Parameter::TextDocumentIdentifier.new(filename)})
         end
       end
@@ -100,7 +98,7 @@ module Mrbmacs
 
       app.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
         lang = app.current_buffer.mode.name
-        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
+        if app.lsp_is_running?
           app.lsp_sync_text
           if app.frame.view_win.sci_autoc_active == 0
             app.ext.lsp[lang].cancel_request_with_method('textDocument/completion')
@@ -111,7 +109,7 @@ module Mrbmacs
 
       app.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
         lang = app.current_buffer.mode.name
-        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
+        if app.lsp_is_running?
 #          if scn['modification_type'] & (Scintilla::SC_MOD_INSERTTEXT | Scintilla::SC_MOD_DELETETEXT) > 0
           if scn['modification_type'] > 0
             pos = scn['position']
@@ -133,7 +131,7 @@ module Mrbmacs
 
       app.add_sci_event(Scintilla::SCN_DWELLSTART) do |app, scn|
         lang = app.current_buffer.mode.name
-        if app.ext.lsp[lang] != nil and app.ext.lsp[lang].status == :running
+        if app.lsp_is_running?
           line, col = app.get_current_line_col(scn['pos'])
           td = LSP::Parameter::TextDocumentIdentifier.new(app.current_buffer.filename)
           param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
@@ -165,6 +163,28 @@ module Mrbmacs
 
     def lsp_uri_to_path(uri)
       uri.gsub('file://','')
+    end
+
+    def lsp_completion_trigger_characters
+      lang = @current_buffer.mode.name
+      if @ext.lsp[lang] != nil and
+        @ext.lsp[lang].server_capabilities['completionProvider'] != nil and
+        @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters'] != nil
+        @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters']
+      else
+        []
+      end
+    end
+
+    def lsp_signature_trigger_characters
+      lang = @current_buffer.mode.name
+      if @ext.lsp[lang] != nil and
+        @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil and
+        @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
+        @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters']
+      else
+        []
+      end
     end
 
     def lsp_read_message(io)
@@ -234,26 +254,22 @@ module Mrbmacs
     end
 
     def lsp_send_completion_request(scn)
-      view_win = @frame.view_win
       lang = @current_buffer.mode.name
-      if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
-        pos = view_win.sci_get_current_pos()
-        col = view_win.sci_get_column(pos)
+      if lsp_is_running?
+        line, col = get_current_line_col()
         if col > 0
-          line = view_win.sci_line_from_position(pos)
-          line_text = view_win.sci_get_line(line).chomp[0..col]
+          line_text = get_current_line_text.chomp[0..col]
           input = line_text.split(" ").pop
           td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
           if input != nil and input.length > 0
-            if @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil and
-              @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil and
-              @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].include?(scn['ch'].chr("UTF-8"))
+            $stderr.puts lsp_signature_trigger_characters
+            if lsp_signature_trigger_characters.include?(scn['ch'].chr("UTF-8"))
               @ext.lsp[lang].signatureHelp({
                   "textDocument" => td, "position" => {"line" => line, "character" => col}})
             else
-              if @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters'].include?(scn['ch'].chr)
+              if lsp_completion_trigger_characters.include?(scn['ch'].chr("UTF-8"))
                 trigger_kind = 2
-                trigger_char = scn['ch'].chr
+                trigger_char = scn['ch'].chr("UTF-8")
               else
                 trigger_kind = 1
                 trigger_char = ""
@@ -280,7 +296,7 @@ module Mrbmacs
         req['context']['triggerKind'] == 2
         ""
       else
-        line_text.split(" ").pop
+        line_text.split(/[ #{lsp_completion_trigger_characters.join}]/).pop
       end
       if res.has_key?('result')
         items = []
