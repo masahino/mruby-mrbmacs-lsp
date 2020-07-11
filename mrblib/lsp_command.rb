@@ -130,5 +130,15 @@ module Mrbmacs
         end
       end
     end
+
+    def lsp_hover()
+      if lsp_is_running?
+        line, col = get_current_line_col()
+        td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+        param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
+        @ext.lsp[@current_buffer.mode.name].hover(param)
+      end
+    end
+
   end
 end
