@@ -262,7 +262,6 @@ module Mrbmacs
           input = line_text.split(" ").pop
           td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
           if input != nil and input.length > 0
-            $stderr.puts lsp_signature_trigger_characters
             if lsp_signature_trigger_characters.include?(scn['ch'].chr("UTF-8"))
               @ext.lsp[lang].signatureHelp({
                   "textDocument" => td, "position" => {"line" => line, "character" => col}})
