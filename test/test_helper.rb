@@ -1,6 +1,22 @@
+class Logger
+  attr_reader :log
+  def initialize(logfile)
+    @log = { :debug => [], :info => [], :error => []}
+  end
+  def debug(message)
+    @log[:debug].push message
+  end
+  def info(message)
+    @log[:info].push message
+  end
+  def error(message)
+    @log[:error].push message
+  end
+end
+
 module Mrbmacs
   class TestApp < Application
-    attr_accessor :ext
+    attr_accessor :ext, :logger
     attr_accessor :get_current_line_col, :get_current_line_text
     def initialize
       @current_buffer = Buffer.new("*scratch*")
