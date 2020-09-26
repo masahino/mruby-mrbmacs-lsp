@@ -2,15 +2,15 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 assert('lsp default command') do
   app = setup_app
-  Mrbmacs::Extension::register_lsp_client(app)
-  assert_equal 9, app.ext.lsp.size
-  assert_equal "solargraph", app.ext.lsp['ruby'].server[:command]
-  assert_equal ['stdio'], app.ext.lsp['ruby'].server[:args]
+  Mrbmacs::LspExtension::register_lsp_client(app)
+  assert_equal 9, app.ext.data['lsp'].size
+  assert_equal "solargraph", app.ext.data['lsp']['ruby'].server[:command]
+  assert_equal ['stdio'], app.ext.data['lsp']['ruby'].server[:args]
 end
 
 assert('lsp config') do
   app = setup_app
-  app.ext.config['lsp'] = {
+  app.config.ext['lsp'] = {
     "ruby" => {
       "command" => "aaaaa",
       "options" => {"args" => ["bbb","ccc"]}
@@ -21,10 +21,10 @@ assert('lsp config') do
     }
   }
 
-  Mrbmacs::Extension::register_lsp_client(app)
-  assert_equal 10, app.ext.lsp.size
-  assert_equal "aaaaa", app.ext.lsp['ruby'].server[:command]
-  assert_equal ['bbb','ccc'], app.ext.lsp['ruby'].server[:args]
+  Mrbmacs::LspExtension::register_lsp_client(app)
+  assert_equal 10, app.ext.data['lsp'].size
+  assert_equal "aaaaa", app.ext.data['lsp']['ruby'].server[:command]
+  assert_equal ['bbb','ccc'], app.ext.data['lsp']['ruby'].server[:args]
 end
 
 assert('uri_to_path') do
@@ -35,7 +35,7 @@ end
 
 assert('def lsp_get_completion_list') do
   app = setup_app
-  Mrbmacs::Extension::register_lsp_client(app)
+  Mrbmacs::LspExtension::register_lsp_client(app)
   app.get_current_line_col = [1, 1]
   app.get_current_line_text = "hoge\n"
   assert_equal [2, ''], app.lsp_get_completion_list({}, {})
@@ -53,21 +53,26 @@ end
 
 assert('lsp_get_completion_trigger_characters') do
   app = setup_app
-  Mrbmacs::Extension::register_lsp_client(app)
+  Mrbmacs::LspExtension::register_lsp_client(app)
   assert_equal [], app.lsp_completion_trigger_characters
-  app.ext.lsp['default'] = LSP::Client.new("", {})
+  app.ext.data['lsp']['default'] = LSP::Client.new("", {})
   assert_equal [], app.lsp_completion_trigger_characters
-  app.ext.lsp['default'].server_capabilities['completionProvider']['triggerCharacters'] = ['x', 'y', 'z']
+  app.ext.data['lsp']['default'].server_capabilities['completionProvider']['triggerCharacters'] = ['x', 'y', 'z']
   assert_equal ['x', 'y', 'z'], app.lsp_completion_trigger_characters
 end
 
 assert('lsp_get_signature_trigger_characters') do
   app = setup_app
-  Mrbmacs::Extension::register_lsp_client(app)
+  Mrbmacs::LspExtension::register_lsp_client(app)
   assert_equal [], app.lsp_signature_trigger_characters
-  app.ext.lsp['default'] = LSP::Client.new("", {})
+  app.ext.data['lsp']['default'] = LSP::Client.new("", {})
   assert_equal [], app.lsp_signature_trigger_characters
-  app.ext.lsp['default'].server_capabilities['signatureHelpProvider']['triggerCharacters'] = ['a', 'b', 'c']
+  app.ext.data['lsp']['default'].server_capabilities['signatureHelpProvider']['triggerCharacters'] = ['a', 'b', 'c']
   assert_equal ['a', 'b', 'c'], app.lsp_signature_trigger_characters
 
+end
+
+assert('lsp_keymap') do
+  app = setup_app
+  Mrbmacs::LspExtension.set_keybind(app, 'default')
 end

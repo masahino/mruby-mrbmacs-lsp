@@ -1,61 +1,65 @@
 module Mrbmacs
-  class Extension
-    attr_accessor :lsp
+  class LspExtension < Extension
     LSP_LIST_TYPE = 99
     LSP_DEFAULT_CONFIG = {
-      "cpp" => {
-        "command" => "ccls",
-        "options" => {},
+      'cpp' => {
+        'command' => 'ccls',
+        'options' => {},
       },
-      "go" => {
-        "command" => "gopls",
-        "options" => {},
+      'go' => {
+        'command' => 'gopls',
+        'options' => {},
       },
-      "html" => {
-        "command" => "html-languageserver",
-        "options" => {"args" => ["--stdio"]},
+      'html' => {
+        'command' => 'html-languageserver',
+        'options' => {'args' => ['--stdio']},
       },
-      "javascript" => {
-        "command" => "typescript-language-server",
-        "options" => {"args" => ["--stdio"]},
+      'javascript' => {
+        'command' => 'typescript-language-server',
+        'options' => {'args' => ['--stdio']},
       },
-      "perl" => {
-        "command" => "perl",
-        "options" => {"args" => ['-MPerl::LanguageServer', '-e', '"Perl::LanguageServer->run"']},
+      'perl' => {
+        'command' => 'perl',
+        'options' => {'args' => ['-MPerl::LanguageServer', '-e', '"Perl::LanguageServer->run"']},
       },
-      "python" => {
-        "command" => "pyls",
-        "options" => {},
+      'python' => {
+        'command' => 'pyls',
+        'options' => {},
       },
-      "r" => {
-        "command" => "R",
-        "options" => {"args" => ['--slave', '-e', 'languageserver::run\(\)']},
+      'r' => {
+        'command' => 'R',
+        'options' => {'args' => ['--slave', '-e', 'languageserver::run\(\)']},
       },
-      "ruby" => {
-        "command" => "solargraph",
-        "options" => {"args" => ["stdio"]},
+      'ruby' => {
+        'command' => 'solargraph',
+        'options' => {'args' => ['stdio']},
       },
-      "rust" => {
-        "command" => "rls",
-        "options" => {},
+      'rust' => {
+        'command' => 'rls',
+        'options' => {},
       },
+    }
+    LSP_DEFAULT_KEYMAP = {
+      'M-r' => 'lsp-references',
+      'M-d' => 'lsp-definition',
     }
 
     def self.register_lsp_client(app)
       app.use_builtin_completion = false
-      app.ext.lsp = {}
+      app.ext.data['lsp'] = {}
       config = LSP_DEFAULT_CONFIG
-      if app.ext.config['lsp'] != nil
-        config.merge! app.ext.config['lsp']
+      if app.config.ext['lsp'] != nil
+        config.merge! app.config.ext['lsp']
       end
       config.each do |l, v|
-        app.ext.lsp[l] = LSP::Client.new(v["command"], v["options"])
+        app.ext.data['lsp'][l] = LSP::Client.new(v["command"], v["options"])
+        Mrbmacs::LspExtension.set_keybind(app, l)
       end
       app.add_command_event(:after_find_file) do |app, filename|
         lang = app.current_buffer.mode.name
-        if app.ext.lsp[lang] != nil
-          if app.ext.lsp[lang].status == :stop
-            app.ext.lsp[lang].start_server({
+        if app.ext.data['lsp'][lang] != nil
+          if app.ext.data['lsp'][lang].status == :stop
+            app.ext.data['lsp'][lang].start_server({
                 'rootUri' => 'file://' + app.current_buffer.directory,
                 'capabilities' => {
                   'workspace' => {},
@@ -67,28 +71,29 @@ module Mrbmacs
                   'trace' => 'verbose',
                 }
               })
-            if app.ext.lsp[lang].io != nil
-              app.add_io_read_event(app.ext.lsp[lang].io) do |app, io|
+            if app.ext.data['lsp'][lang].io != nil
+              app.add_io_read_event(app.ext.data['lsp'][lang].io) do |app, io|
                 app.lsp_read_message(io)
               end
             end
           end
-#          if app.ext.lsp[lang].status == :running
-            app.ext.lsp[lang].didOpen({"textDocument" => LSP::Parameter::TextDocumentItem.new(filename)})
-#          end
-          app.current_buffer.additional_info = app.ext.lsp[lang].server[:command] + ":" + app.ext.lsp[lang].status.to_s[0]
+          if app.ext.data['lsp'][lang].status == :running
+            app.ext.data['lsp'][lang].didOpen({"textDocument" => LSP::Parameter::TextDocumentItem.new(filename)})
+          end
+          app.current_buffer.additional_info = app.ext.data['lsp'][lang].server[:command] + ":" + app.ext.data['lsp'][lang].status.to_s[0]
         end
       end
 
       app.add_command_event(:after_save_buffer) do |app, filename|
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
-          app.ext.lsp[lang].didSave({"textDocument" => LSP::Parameter::TextDocumentIdentifier.new(filename)})
+          app.ext.data['lsp'][lang].didSave({
+              'textDocument' => LSP::Parameter::TextDocumentIdentifier.new(filename)})
         end
       end
 
       app.add_command_event(:before_save_buffers_kill_terminal) do |app|
-        app.ext.lsp.each do |lang, client|
+        app.ext.data['lsp'].each do |lang, client|
           if client.status != :stop
             client.shutdown
             client.stop_server
@@ -101,7 +106,7 @@ module Mrbmacs
         if app.lsp_is_running?
           app.lsp_sync_text
           if app.frame.view_win.sci_autoc_active == 0
-            app.ext.lsp[lang].cancel_request_with_method('textDocument/completion')
+            app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
             app.lsp_send_completion_request(scn)
           end
         end
@@ -121,10 +126,10 @@ module Mrbmacs
 #            cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(scn['text'], range, length)]
             cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(app.frame.view_win.sci_get_text(app.frame.view_win.sci_get_length+1))]
             param = {"textDocument" => td, "contentChanges" => cc}
-            if app.ext.lsp[lang].file_version[td.uri] == nil
-              app.ext.lsp[lang].didOpen({"textDocument" => LSP::Parameter::TextDocumentItem.new(filename)})
+            if app.ext.data['lsp'][lang].file_version[td.uri] == nil
+              app.ext.data['lsp'][lang].didOpen({"textDocument" => LSP::Parameter::TextDocumentItem.new(filename)})
             end
-            app.ext.lsp[lang].didChange(param)
+            app.ext.data['lsp'][lang].didChange(param)
           end
         end
       end
@@ -134,8 +139,8 @@ module Mrbmacs
         if app.lsp_is_running?
           line, col = app.get_current_line_col(scn['pos'])
           td = LSP::Parameter::TextDocumentIdentifier.new(app.current_buffer.filename)
-          param = {"textDocument" => td, "position" => {"line" => line, "character" => col}}
-          app.ext.lsp[lang].hover(param)
+          param = {"textDocument" => td, "position" => app.lsp_position(scn['pos'])}
+          app.ext.data['lsp'][lang].hover(param)
         end
       end
 
@@ -149,12 +154,22 @@ module Mrbmacs
         end
       end
     end
+
+    def self.set_keybind(app, lang)
+      mode = Mrbmacs::Mode.get_mode_by_name(lang)
+      if mode != nil
+        LSP_DEFAULT_KEYMAP.each do |k, v|
+          mode.keymap[k] = v
+        end
+      end
+    end
   end
 
   class Application
     def lsp_is_running?
       lang = @current_buffer.mode.name
-      if @ext.lsp[lang] != nil and @ext.lsp[lang].status == :running
+      if @ext.data['lsp'][lang] != nil and @ext.data['lsp'][lang].status == :running
+       # @ext[:lsp].server[lang]
         true
       else
         false
@@ -167,10 +182,10 @@ module Mrbmacs
 
     def lsp_completion_trigger_characters
       lang = @current_buffer.mode.name
-      if @ext.lsp[lang] != nil and
-        @ext.lsp[lang].server_capabilities['completionProvider'] != nil and
-        @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters'] != nil
-        @ext.lsp[lang].server_capabilities['completionProvider']['triggerCharacters']
+      if @ext.data['lsp'][lang] != nil and
+        @ext.data['lsp'][lang].server_capabilities['completionProvider'] != nil and
+        @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters'] != nil
+        @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters']
       else
         []
       end
@@ -178,17 +193,17 @@ module Mrbmacs
 
     def lsp_signature_trigger_characters
       lang = @current_buffer.mode.name
-      if @ext.lsp[lang] != nil and
-        @ext.lsp[lang].server_capabilities['signatureHelpProvider'] != nil and
-        @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
-        @ext.lsp[lang].server_capabilities['signatureHelpProvider']['triggerCharacters']
+      if @ext.data['lsp'][lang] != nil and
+        @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider'] != nil and
+        @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
+        @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters']
       else
         []
       end
     end
 
     def lsp_read_message(io)
-      @ext.lsp.each_pair do |k, v|
+      @ext.data['lsp'].each_pair do |k, v|
         if io == v.io
           resp = v.recv_message[1]
           @logger.debug resp.to_s
@@ -263,8 +278,8 @@ module Mrbmacs
           td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
           if input != nil and input.length > 0
             if lsp_signature_trigger_characters.include?(scn['ch'].chr("UTF-8"))
-              @ext.lsp[lang].signatureHelp({
-                  "textDocument" => td, "position" => {"line" => line, "character" => col}})
+              @ext.data['lsp'][lang].signatureHelp({
+                  "textDocument" => td, "position" => lsp_position})
             else
               if lsp_completion_trigger_characters.include?(scn['ch'].chr("UTF-8"))
                 trigger_kind = 2
@@ -274,11 +289,11 @@ module Mrbmacs
                 trigger_char = ""
               end
               param = {"textDocument" => td,
-                "position" => {"line" => line, "character" => col},
+                "position" => lsp_position,
                 "context" => {"triggerKind" => trigger_kind, "triggerCharacter" => trigger_char},
               }
               @logger.debug param.to_s
-              @ext.lsp[lang].completion(param)
+              @ext.data['lsp'][lang].completion(param)
             end
           end
         end

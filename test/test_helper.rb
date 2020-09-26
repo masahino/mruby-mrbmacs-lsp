@@ -28,6 +28,10 @@ module Mrbmacs
       @ext = Extension.new
       @logger = Logger.new(File.dirname('__FILE__') + 'test.log')
       @command_list = {}
+      @config = Config.new
+    end
+
+    def add_buffer_to_frame(buffer)
     end
   end
 
