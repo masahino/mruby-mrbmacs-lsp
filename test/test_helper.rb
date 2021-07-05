@@ -108,8 +108,8 @@ module Scintilla
 #    def sci_set_docpointer(doc)
 #    end
 
-#    def sci_set_lexer_language(lang)
-#    end
+    def sci_set_lexer_language(lang)
+    end
 
     def send_key(key, mod_shift, mod_ctrl, mod_alt)
     end
