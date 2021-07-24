@@ -215,6 +215,8 @@ module Mrbmacs
               case v.request_buffer[id][:message]['method']
               when 'initialize'
                 v.initialized(resp)
+                v.didOpen(
+                  {"textDocument" => LSP::Parameter::TextDocumentItem.new(@current_buffer.filename)})
                 @current_buffer.additional_info = v.server[:command] + ":" + v.status.to_s[0]
               when 'textDocument/completion'
                 if @frame.view_win.sci_autoc_active == 0 and @frame.view_win.sci_calltip_active == 0
