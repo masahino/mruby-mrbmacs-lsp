@@ -50,8 +50,6 @@ module Mrbmacs
     end
 
     def lsp_edit_buffer(text_edit)
-$stderr.puts "lsp edit buffer"
-$stderr.puts text_edit
       sci_begin_undo_action()
       text_edit.reverse_each do |e|
         @logger.debug e
