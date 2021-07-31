@@ -33,9 +33,9 @@ example of ~/.mrbmacsrc
 |signatureHelp  |Yes|
 |declaration    |Yes|lsp_goto_declaration|
 |definition     |Yes|lsp_goto_definition|
-|typeDefinition |No||
-|implementation |No||
-|references     |No||
+|typeDefinition |No|lsp_type_definition|
+|implementation |No|lsp_implementation|
+|references     |No|lsp_references|
 |documentHighlight|No|
 |documentSymbol |No|
 |codeAction |No|
@@ -48,7 +48,7 @@ example of ~/.mrbmacsrc
 |formatting |Yes|lsp_formatting|
 |rangeFormatting |Yes|lsp_range_formatting|
 |onTypeFormatting |No|
-|rename |No|
+|rename |Yes|lsp_rename|
 |prepareRename |No|
 |foldingRange|No|-
 
