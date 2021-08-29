@@ -351,6 +351,7 @@ module Mrbmacs
           d['message']
           )
       end
+      @frame.view_win.sci_scrollcaret
     end
   end
 end
