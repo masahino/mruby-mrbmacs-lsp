@@ -112,18 +112,11 @@ module Mrbmacs
         end
       end
 
-      app.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
+      app.add_sci_event(Scintilla::SCN_UPDATEUI) do |app, scn|
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
-#          if scn['modification_type'] & (Scintilla::SC_MOD_INSERTTEXT | Scintilla::SC_MOD_DELETETEXT) > 0
-          if scn['modification_type'] > 0
-            pos = scn['position']
-            line, col = app.get_current_line_col(pos)
-            length = scn['length']
-            filename = app.current_buffer.filename
+          if scn['updated'] & Scintilla::SC_UPDATE_CONTENT == Scintilla::SC_UPDATE_CONTENT
             td = LSP::Parameter::VersionedTextDocumentIdentifier.new(app.current_buffer.filename, 0)
-            range = LSP::Parameter::Range.new(line, col, line, col+length)
-#            cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(scn['text'], range, length)]
             cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(app.frame.view_win.sci_get_text(app.frame.view_win.sci_get_length+1))]
             param = {"textDocument" => td, "contentChanges" => cc}
             if app.ext.data['lsp'][lang].file_version[td.uri] == nil
