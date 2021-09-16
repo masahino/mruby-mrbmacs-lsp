@@ -52,8 +52,10 @@ module Mrbmacs
         config.merge! app.config.ext['lsp']
       end
       config.each do |l, v|
-        app.ext.data['lsp'][l] = LSP::Client.new(v["command"], v["options"])
-        Mrbmacs::LspExtension.set_keybind(app, l)
+        if Which.which(v["command"]) != nil
+          app.ext.data['lsp'][l] = LSP::Client.new(v["command"], v["options"])
+          Mrbmacs::LspExtension.set_keybind(app, l)
+        end
       end
       app.add_command_event(:after_find_file) do |app, filename|
         lang = app.current_buffer.mode.name
