@@ -12,7 +12,7 @@ assert('lsp config') do
   app = setup_app
   app.config.ext['lsp'] = {
     "ruby" => {
-      "command" => "aaaaa",
+      "command" => "ruby",
       "options" => {"args" => ["bbb","ccc"]}
     },
     "whitespace" => {
@@ -22,8 +22,8 @@ assert('lsp config') do
   }
 
   Mrbmacs::LspExtension::register_lsp_client(app)
-  assert_equal 10, app.ext.data['lsp'].size
-  assert_equal "aaaaa", app.ext.data['lsp']['ruby'].server[:command]
+  assert_equal 9, app.ext.data['lsp'].size
+  assert_equal "ruby", app.ext.data['lsp']['ruby'].server[:command]
   assert_equal ['bbb','ccc'], app.ext.data['lsp']['ruby'].server[:args]
 end
 
