@@ -55,9 +55,9 @@ assert('lsp_get_completion_trigger_characters') do
   app = setup_app
   Mrbmacs::LspExtension::register_lsp_client(app)
   assert_equal [], app.lsp_completion_trigger_characters
-  app.ext.data['lsp']['fundamental'] = LSP::Client.new("", {})
+  app.ext.data['lsp']['irb'] = LSP::Client.new("", {})
   assert_equal [], app.lsp_completion_trigger_characters
-  app.ext.data['lsp']['fundamental'].server_capabilities['completionProvider']['triggerCharacters'] = ['x', 'y', 'z']
+  app.ext.data['lsp']['irb'].server_capabilities['completionProvider']['triggerCharacters'] = ['x', 'y', 'z']
   assert_equal ['x', 'y', 'z'], app.lsp_completion_trigger_characters
 end
 
@@ -65,9 +65,9 @@ assert('lsp_get_signature_trigger_characters') do
   app = setup_app
   Mrbmacs::LspExtension::register_lsp_client(app)
   assert_equal [], app.lsp_signature_trigger_characters
-  app.ext.data['lsp']['fundamental'] = LSP::Client.new("", {})
+  app.ext.data['lsp']['irb'] = LSP::Client.new("", {})
   assert_equal [], app.lsp_signature_trigger_characters
-  app.ext.data['lsp']['fundamental'].server_capabilities['signatureHelpProvider']['triggerCharacters'] = ['a', 'b', 'c']
+  app.ext.data['lsp']['irb'].server_capabilities['signatureHelpProvider']['triggerCharacters'] = ['a', 'b', 'c']
   assert_equal ['a', 'b', 'c'], app.lsp_signature_trigger_characters
 
 end
