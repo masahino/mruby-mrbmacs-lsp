@@ -22,7 +22,7 @@ assert('lsp config') do
   }
 
   Mrbmacs::LspExtension::register_lsp_client(app)
-  assert_equal 9, app.ext.data['lsp'].size
+  assert_equal 10, app.ext.data['lsp'].size
   assert_equal "ruby", app.ext.data['lsp']['ruby'].server[:command]
   assert_equal ['bbb','ccc'], app.ext.data['lsp']['ruby'].server[:args]
 end

@@ -52,14 +52,14 @@ module Mrbmacs
         config.merge! appl.config.ext['lsp']
       end
       config.each do |l, v|
-        if Which.which(v['command']) != nil
+#        if Which.which(v['command']) != nil
           appl.ext.data['lsp'][l] = LSP::Client.new(v['command'], v['options'])
           Mrbmacs::LspExtension.set_keybind(appl, l)
-        end
+#        end
       end
       appl.add_command_event(:after_find_file) do |app, filename|
         lang = app.current_buffer.mode.name
-        if app.ext.data['lsp'][lang] != nil
+        if app.ext.data['lsp'][lang] != nil && Which.which(app.ext.data['lsp'][lang].server[:command]) != nil
           if app.ext.data['lsp'][lang].status == :stop
             app.ext.data['lsp'][lang].start_server(
               {
@@ -97,7 +97,6 @@ module Mrbmacs
               'textDocument' => LSP::Parameter::TextDocumentIdentifier.new(filename)
             }
           )
-          app.message('didSave')
         end
       end
 
