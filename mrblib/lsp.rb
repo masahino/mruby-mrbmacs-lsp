@@ -52,10 +52,10 @@ module Mrbmacs
         config.merge! appl.config.ext['lsp']
       end
       config.each do |l, v|
-#        if Which.which(v['command']) != nil
-          appl.ext.data['lsp'][l] = LSP::Client.new(v['command'], v['options'])
-          Mrbmacs::LspExtension.set_keybind(appl, l)
-#        end
+        # if Which.which(v['command']) != nil
+        appl.ext.data['lsp'][l] = LSP::Client.new(v['command'], v['options'])
+        Mrbmacs::LspExtension.set_keybind(appl, l)
+        # end
       end
       appl.add_command_event(:after_find_file) do |app, filename|
         lang = app.current_buffer.mode.name
@@ -120,18 +120,16 @@ module Mrbmacs
         end
       end
 
-      appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
+      appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, _scn|
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
-          if scn['updated'] & Scintilla::SC_UPDATE_CONTENT == Scintilla::SC_UPDATE_CONTENT
-            td = LSP::Parameter::VersionedTextDocumentIdentifier.new(app.current_buffer.filename, 0)
-            cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(app.frame.view_win.sci_get_text(app.frame.view_win.sci_get_length + 1))]
-            param = { 'textDocument' => td, 'contentChanges' => cc }
-            if app.ext.data['lsp'][lang].file_version[td.uri] == nil
-              app.ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
-            end
-            app.ext.data['lsp'][lang].didChange(param)
+          td = LSP::Parameter::VersionedTextDocumentIdentifier.new(app.current_buffer.filename, 0)
+          cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(app.frame.view_win.sci_get_text(app.frame.view_win.sci_get_length + 1))]
+          param = { 'textDocument' => td, 'contentChanges' => cc }
+          if app.ext.data['lsp'][lang].file_version[td.uri] == nil
+            app.ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
           end
+          app.ext.data['lsp'][lang].didChange(param)
         end
       end
 
@@ -299,20 +297,22 @@ module Mrbmacs
           input = line_text.split(" ").pop
           td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
           if input != nil and input.length > 0
-            if lsp_signature_trigger_characters.include?(scn['ch'].chr("UTF-8"))
-              @ext.data['lsp'][lang].signatureHelp({
-                  "textDocument" => td, "position" => lsp_position})
+            if lsp_signature_trigger_characters.include?(scn['ch'].chr('UTF-8'))
+              @ext.data['lsp'][lang].signatureHelp(
+                { 'textDocument' => td, 'position' => lsp_position }
+              )
             else
-              if lsp_completion_trigger_characters.include?(scn['ch'].chr("UTF-8"))
+              if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
                 trigger_kind = 2
-                trigger_char = scn['ch'].chr("UTF-8")
+                trigger_char = scn['ch'].chr('UTF-8')
               else
                 trigger_kind = 1
-                trigger_char = ""
+                trigger_char = ''
               end
-              param = {"textDocument" => td,
-                "position" => lsp_position,
-                "context" => {"triggerKind" => trigger_kind, "triggerCharacter" => trigger_char},
+              param = {
+                'textDocument' => td,
+                'position' => lsp_position,
+                'context' => { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
               }
               @logger.debug param.to_s
               @ext.data['lsp'][lang].completion(param)
@@ -320,20 +320,20 @@ module Mrbmacs
           end
         end
       else
-        @logger.info "not yet initialized"
+        @logger.info 'not yet initialized'
       end
     end
 
     def lsp_get_completion_list(req, res)
-      line, col = get_current_line_col()
-      line_text = get_current_line_text().chomp[0..col]
+      line, col = get_current_line_col
+      line_text = get_current_line_text.chomp[0..col]
       input = if req.has_key?('context') &&
         req['context'].has_key?('triggerKind') &&
         req['context']['triggerKind'] == 2
-        ""
-      else
-        line_text.split(/[ #{lsp_completion_trigger_characters.join}]/).pop
-      end
+                ''
+              else
+                line_text.split(/[ #{lsp_completion_trigger_characters.join}]/).pop
+              end
       if res.has_key?('result')
         items = []
         if res['result'].is_a?(Hash)
@@ -343,9 +343,9 @@ module Mrbmacs
         elsif res['result'].is_a?(Array)
           items = res['result']
         end
-#        candidates = res['result']['items'].map { |h|
-        candidates = items.map { |h|
-          str = ""
+        # candidates = res['result']['items'].map { |h|
+        candidates = items.map do |h|
+          str = ''
           if h['textEdit'] != nil
             str = h['textEdit']['newText'].strip
           elsif h['insertText'] != nil
@@ -354,7 +354,7 @@ module Mrbmacs
             str = h['label'].strip
           end
           str
-        }
+        end
       else
         candidates = []
       end
