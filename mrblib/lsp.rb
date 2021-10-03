@@ -120,7 +120,7 @@ module Mrbmacs
         end
       end
 
-      appl.add_sci_event(Scintilla::SCN_UPDATEUI) do |app, scn|
+      appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
           if scn['updated'] & Scintilla::SC_UPDATE_CONTENT == Scintilla::SC_UPDATE_CONTENT
