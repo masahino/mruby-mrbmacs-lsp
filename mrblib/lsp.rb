@@ -380,13 +380,15 @@ module Mrbmacs
     def lsp_show_annotation(diagnostics)
       @frame.view_win.sci_annotation_clearall
       diagnostics.each do |d|
-        line = d['range']['start']['line'] + 1
+        line = d['range']['start']['line']
         col = d['range']['start']['character'] + 1
         message = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity']) + ':' + d['message']
+        style = lsp_get_style_from_severity(d['severity'])
         if @frame.view_win.sci_annotation_get_lines(line) > 0
           message = @frame.view_win.sci_annotation_get_text(line) + "\n" + message
+          style = @frame.view_win.sci_annotation_get_style(line)
         end
-        @frame.show_annotation(line, col, message, lsp_get_style_from_severity(d['severity']))
+        @frame.show_annotation(line + 1, col, message, style)
       end
       @frame.view_win.sci_scrollcaret
     end
