@@ -40,6 +40,7 @@ module Mrbmacs
         'options' => {}
       }
     }
+
     LSP_DEFAULT_KEYMAP = {
       'M-r' => 'lsp-references',
       'M-d' => 'lsp-definition'
@@ -102,7 +103,7 @@ module Mrbmacs
 
       appl.add_command_event(:before_save_buffers_kill_terminal) do |app|
         app.ext.data['lsp'].each do |_lang, client|
-          if client.status != :stop
+          if client.status != :stop and client.status != :not_found
             client.shutdown
             client.stop_server
           end
@@ -222,7 +223,13 @@ module Mrbmacs
         next unless io == v.io
 
         # if io == v.io
-        resp = v.recv_message[1]
+        headers, resp = v.recv_message
+        if headers == {}
+          @logger.error "server(#{v.server[:command]}) is not running"
+          v.status = :not_found
+          del_io_read_event(v.io)
+          next
+        end
         @logger.debug resp.to_s
         if resp['id'] != nil
           # request or response

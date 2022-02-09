@@ -96,6 +96,12 @@ module Scintilla
       end
     end
 
+    def send_message_get_docpointer(message, *args)
+    end
+
+    def send_message_set_docpointer(id, wparam)
+    end
+
     def resize_window(height, width)
     end
 
@@ -104,9 +110,6 @@ module Scintilla
 
     def refresh
     end
-
-#    def sci_set_docpointer(doc)
-#    end
 
     def sci_set_lexer_language(lang)
     end
