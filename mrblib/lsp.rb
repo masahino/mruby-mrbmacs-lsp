@@ -3,6 +3,10 @@ module Mrbmacs
   class LspExtension < Extension
     LSP_LIST_TYPE = 99
     LSP_DEFAULT_CONFIG = {
+      'bash' => {
+        'command' => 'bash-language-server',
+        'options' => { 'args' => ['start'] }
+      },
       'cpp' => {
         'command' => 'ccls',
         'options' => {}
@@ -17,6 +21,10 @@ module Mrbmacs
       },
       'javascript' => {
         'command' => 'typescript-language-server',
+        'options' => { 'args' => ['--stdio'] }
+      },
+      'markdown' => {
+        'command' => 'remark-language-server',
         'options' => { 'args' => ['--stdio'] }
       },
       'perl' => {
