@@ -6,11 +6,11 @@ assert('lsp_goto_command') do
   app.ext.data['lsp']['irb'] = LSP::Client.new('ruby', {'args' => [File.dirname(__FILE__)+'/../misc/dummy_lsp.rb']})
   app.ext.data['lsp']['irb'].server_capabilities['hogehogeProvider'] = false
   assert_equal nil, app.lsp_goto_command('hogehoge', 'hogehogeProvider')
-  assert_equal "hogehogeProvider is not supported", app.logger.log[:debug].last
+  assert_equal "hogehogeProvider is not supported", app.logger.log[:info].last
 
   app.ext.data['lsp']['irb'].server_capabilities['definitionProvider'] = true
   app.lsp_goto_command('definition', 'definitionProvider')
-  assert_equal "[lsp] server is not running", app.logger.log[:debug].last
+  assert_equal "[lsp] server is not running", app.logger.log[:info].last
 
 #  app.ext.data['lsp']['default'].start_server({})
 #  app.ext.data['lsp']['default'].status = :running
