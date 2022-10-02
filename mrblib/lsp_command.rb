@@ -1,4 +1,5 @@
 module Mrbmacs
+  # LSP commands
   class Application
     def lsp_goto_command(method, capability)
       lang = @current_buffer.mode.name
@@ -11,7 +12,7 @@ module Mrbmacs
         #        line, col = get_current_line_col()
         param = { 'textDocument' => td, 'position' => lsp_position }
         message "[lsp] sending \"#{method}\" message..."
-        ret = @ext.data['lsp'][lang].send(method, param) do |resp|
+        @ext.data['lsp'][lang].send(method, param) do |resp|
           list = resp['result'].map do |x|
             sprintf("%s,%d,%d",
                     lsp_uri_to_path(x['uri']),
@@ -53,9 +54,10 @@ module Mrbmacs
       sci_begin_undo_action
       text_edit.reverse_each do |e|
         @logger.debug e
-        @frame.view_win.sci_set_sel(
-          @frame.view_win.sci_findcolumn(e['range']['start']['line'], e['range']['start']['character']),
-          @frame.view_win.sci_findcolumn(e['range']['end']['line'], e['range']['end']['character']))
+        @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
+                                                                   e['range']['start']['character']),
+                                    @frame.view_win.sci_findcolumn(e['range']['end']['line'],
+                                                                   e['range']['end']['character']))
         sci_replace_sel('', e['newText'])
       end
       sci_end_undo_action
@@ -103,10 +105,10 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].rangeFormatting(param) do |resp|
         @logger.debug 'resp'
         @logger.debug resp
-        if resp != nil and resp.has_key?('result')
+        if resp != nil && resp.key?('result')
           lsp_edit_buffer(resp['result'])
         else
-          if resp.has_key?('error')
+          if resp.key?('error')
             message resp['error']['message']
           end
         end
@@ -128,8 +130,8 @@ module Mrbmacs
       param = { 'textDocument' => td, 'position' => lsp_position, 'newName' => newstr }
       @ext.data['lsp'][@current_buffer.mode.name].rename(param) do |resp|
         @logger.debug resp
-        if resp.has_key?('result')
-          if resp['result']['changes'].has_key?('file://' + @current_buffer.filename)
+        if resp.key?('result')
+          if resp['result']['changes'].key?('file://' + @current_buffer.filename)
             lsp_edit_buffer(resp['result']['changes']['file://' + @current_buffer.filename])
           end
         end
