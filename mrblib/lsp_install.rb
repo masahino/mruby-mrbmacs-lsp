@@ -1,0 +1,131 @@
+module Mrbmacs
+  # install LSP servers
+  class Application
+    def lsp_find_server(lang)
+      return false if @ext.data['lsp'][lang].nil?
+      return true if File.exist?(@ext.data['lsp'][lang].server[:command])
+      return true unless Which.which(@ext.data['lsp'][lang].server[:command]).nil?
+
+      false
+    end
+
+    def lsp_installed_servers
+      installed_servers = {}
+      LSP_SERVERS.each do |k, v|
+        v.each do |s|
+          if Dir.exist? lsp_server_dir(s['command'])
+            installed_servers[k] = { 'command' => "#{lsp_server_dir(s['command'])}/#{s['command']}",
+                                     'options' => s['options'] }
+            break
+          end
+        end
+      end
+      installed_servers
+    end
+
+    def lsp_data_dir
+      data_dir = if !ENV['LOCALAPPDATA'].nil?
+                   "#{ENV['LOCALAPPDATA']}/mrbmacs-lsp/"
+                 elsif !ENV['XDG_DATA_HOME'].nil?
+                   "#{ENV['XDG_DATA_HOME']}/mrbmacs-lsp/"
+                 elsif !ENV['HOME'].nil?
+                   "#{ENV['HOME']}/.local/share/mrbmacs-lsp/"
+                 end
+      Dir.mkdir(data_dir) unless Dir.exist?(data_dir)
+      data_dir
+    end
+
+    def lsp_server_dir(server)
+      data_dir = lsp_data_dir
+      return nil if data_dir.nil?
+
+      Dir.mkdir("#{data_dir}/servers") unless Dir.exist?("#{data_dir}/servers")
+      "#{data_dir}servers/#{server}"
+    end
+
+    def lsp_installer_dir
+      # check vim-lsp-settings/installer
+      homedir =
+        if !ENV['HOME'].nil?
+          ENV['HOME']
+        elsif !ENV['HOMEDRIVE'].nil?
+          ENV['HOMEDRIVE'] + ENV['HOMEPATH']
+        else
+          return nil
+        end
+      installer_dir = "#{homedir}/.vim/plugged/vim-lsp-settings/installer"
+      return installer_dir if Dir.exist?(installer_dir)
+    end
+
+    def lsp_server_list_with_lang(lang)
+      list = []
+      LSP_SERVERS[lang].each do |s|
+        list.push s['command']
+      end
+      list
+    end
+
+    def lsp_server_list
+      list = []
+      LSP_SERVERS.each_value do |l|
+        l.each do |s|
+          list.push s['command']
+        end
+      end
+      list
+    end
+
+    def lsp_install_command(server)
+      ext = '.sh'
+      ext = '.cmd' unless File::ALT_SEPARATOR.nil?
+      "#{lsp_installer_dir}/install-#{server}#{ext}"
+    end
+
+    def lsp_select_install_server(lang)
+      server_list = lsp_server_list_with_lang(lang)
+      @frame.echo_gets('server: ') do |input_text|
+        comp_list = server_list.filter { |s| s.start_with? input_text }
+        [comp_list.join(' '), input_text.length]
+      end
+    end
+
+    def lsp_select_lang_for_server
+      lsp_lang_list = LSP_SERVERS.keys
+      lang = if lsp_lang_list.include? @current_buffer.mode.name
+               @current_buffer.mode.name
+             else
+               ''
+             end
+      @frame.echo_gets('language: ', lang) do |input_text|
+        comp_list = lsp_lang_list.filter { |l| l.start_with? input_text }
+        [comp_list.join(' '), input_text.length]
+      end
+    end
+
+    def lsp_start_installed_server(lang, command)
+      server = LSP_SERVERS[lang].filter{ |s| s['command'] == command }[0]
+      new_server_command = "#{lsp_server_dir(server['command'])}/#{server['command']}"
+      if File.exist?(new_server_command)
+        @ext.data['lsp'][lang] = LSP::Client.new(new_server_command, server['options'])
+        Mrbmacs::LspExtension.set_keybind(self, lang)
+      end
+    end
+
+    def lsp_install_server(server = nil)
+      lang = lsp_select_lang_for_server
+      server = lsp_select_install_server(lang) if server.nil?
+      return if server.nil?
+
+      install_cmd = lsp_install_command(server)
+      return unless File.exist?(install_cmd)
+
+      server_dir = lsp_server_dir(server)
+      return if server_dir.nil?
+
+      Dir.mkdir(server_dir) unless Dir.exist?(server_dir)
+      exec_shell_command('*LSPInstall*', "(cd #{server_dir} ; #{install_cmd})") do |res|
+        
+      end
+    end
+  end
+end

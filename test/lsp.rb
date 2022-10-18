@@ -2,9 +2,8 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 assert('lsp default command') do
   app = setup_app
-  Mrbmacs::LspExtension::register_lsp_client(app)
-  assert_equal 11, app.ext.data['lsp'].size
-  assert_equal "solargraph", app.ext.data['lsp']['ruby'].server[:command]
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  assert_equal 'solargraph', app.ext.data['lsp']['ruby'].server[:command]
   assert_equal ['stdio'], app.ext.data['lsp']['ruby'].server[:args]
 end
 
@@ -22,7 +21,6 @@ assert('lsp config') do
   }
 
   Mrbmacs::LspExtension.register_lsp_client(app)
-  assert_equal 12, app.ext.data['lsp'].size
   assert_equal 'ruby', app.ext.data['lsp']['ruby'].server[:command]
   assert_equal ['bbb', 'ccc'], app.ext.data['lsp']['ruby'].server[:args]
 end

@@ -54,12 +54,13 @@ module Mrbmacs
       'M-d' => 'lsp-definition'
     }
     def self.register_lsp_client(appl)
-      appl.use_builtin_completion = false
+      appl.config.use_builtin_completion = false
       appl.ext.data['lsp'] = {}
       config = LSP_DEFAULT_CONFIG
-      if appl.config.ext['lsp'] != nil
+      unless appl.config.ext['lsp'].nil?
         config.merge! appl.config.ext['lsp']
       end
+      config = appl.lsp_installed_servers.merge config
       config.each do |l, v|
         # if Which.which(v['command']) != nil
         appl.ext.data['lsp'][l] = LSP::Client.new(v['command'], v['options'])
@@ -68,7 +69,7 @@ module Mrbmacs
       end
       appl.add_command_event(:after_find_file) do |app, filename|
         lang = app.current_buffer.mode.name
-        if app.ext.data['lsp'][lang] != nil && Which.which(app.ext.data['lsp'][lang].server[:command]) != nil
+        if app.lsp_find_server(lang)
           if app.ext.data['lsp'][lang].status == :stop
             app.ext.data['lsp'][lang].start_server(
               {
@@ -84,7 +85,7 @@ module Mrbmacs
                 }
               }
             )
-            if app.ext.data['lsp'][lang].io != nil
+            unless app.ext.data['lsp'][lang].io.nil?
               app.add_io_read_event(app.ext.data['lsp'][lang].io) do |iapp, io|
                 iapp.lsp_read_message(io)
               end
@@ -93,8 +94,7 @@ module Mrbmacs
           if app.ext.data['lsp'][lang].status == :running
             app.ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
           end
-          app.current_buffer.additional_info =
-          app.ext.data['lsp'][lang].server[:command] + ':' + app.ext.data['lsp'][lang].status.to_s[0]
+          app.current_buffer.additional_info = app.lsp_additional_info(app.ext.data['lsp'][lang])
         end
       end
 
@@ -111,7 +111,7 @@ module Mrbmacs
 
       appl.add_command_event(:before_save_buffers_kill_terminal) do |app|
         app.ext.data['lsp'].each do |_lang, client|
-          if client.status != :stop and client.status != :not_found
+          if client.status != :stop && client.status != :not_found
             client.shutdown
             client.stop_server
           end
@@ -122,7 +122,7 @@ module Mrbmacs
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
           app.lsp_sync_text
-          if app.frame.view_win.sci_autoc_active == 0
+          if !app.frame.view_win.sci_autoc_active
             app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
             app.lsp_send_completion_request(scn)
           end
@@ -135,7 +135,7 @@ module Mrbmacs
           td = LSP::Parameter::VersionedTextDocumentIdentifier.new(app.current_buffer.filename, 0)
           cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(app.frame.view_win.sci_get_text(app.frame.view_win.sci_get_length + 1))]
           param = { 'textDocument' => td, 'contentChanges' => cc }
-          if app.ext.data['lsp'][lang].file_version[td.uri] == nil
+          if app.ext.data['lsp'][lang].file_version[td.uri].nil?
             app.ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
           end
           app.ext.data['lsp'][lang].didChange(param)
@@ -165,10 +165,10 @@ module Mrbmacs
 
     def self.set_keybind(_app, lang)
       mode = Mrbmacs::Mode.get_mode_by_name(lang)
-      if mode != nil
-        LSP_DEFAULT_KEYMAP.each do |k, v|
-          mode.keymap[k] = v
-        end
+      return if mode.nil?
+
+      LSP_DEFAULT_KEYMAP.each do |k, v|
+        mode.keymap[k] = v
       end
     end
 
@@ -192,7 +192,7 @@ module Mrbmacs
   class Application
     def lsp_is_running?
       lang = @current_buffer.mode.name
-      if @ext.data['lsp'][lang] != nil && @ext.data['lsp'][lang].status == :running
+      if !@ext.data['lsp'][lang].nil? && @ext.data['lsp'][lang].status == :running
         # @ext[:lsp].server[lang]
         true
       else
@@ -207,8 +207,8 @@ module Mrbmacs
     def lsp_completion_trigger_characters
       lang = @current_buffer.mode.name
       if @ext.data['lsp'][lang] != nil &&
-        @ext.data['lsp'][lang].server_capabilities['completionProvider'] != nil &&
-        @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters'] != nil
+         @ext.data['lsp'][lang].server_capabilities['completionProvider'] != nil &&
+         @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters'] != nil
         @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters']
       else
         []
@@ -218,8 +218,8 @@ module Mrbmacs
     def lsp_signature_trigger_characters
       lang = @current_buffer.mode.name
       if @ext.data['lsp'][lang] != nil &&
-        @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider'] != nil &&
-        @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
+         @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider'] != nil &&
+         @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
         @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters']
       else
         []
@@ -239,10 +239,10 @@ module Mrbmacs
           next
         end
         @logger.debug resp.to_s
-        if resp['id'] != nil
+        unless resp['id'].nil?
           # request or response
           id = resp['id'].to_i
-          if v.request_buffer[id] != nil
+          unless v.request_buffer[id].nil?
             @logger.debug v.request_buffer[id][:message]['method'].to_s
             case v.request_buffer[id][:message]['method']
             when 'initialize'
@@ -250,9 +250,9 @@ module Mrbmacs
               v.didOpen(
                 { 'textDocument' => LSP::Parameter::TextDocumentItem.new(@current_buffer.filename) }
               )
-              @current_buffer.additional_info = v.server[:command] + ':' + v.status.to_s[0]
+              @current_buffer.additional_info = lsp_additional_info(v)
             when 'textDocument/completion'
-              if @frame.view_win.sci_autoc_active == 0 and @frame.view_win.sci_calltip_active == 0
+              if !@frame.view_win.sci_autoc_active && @frame.view_win.sci_calltip_active == 0
                 @logger.debug v.request_buffer[id].to_s
                 len, candidates = lsp_get_completion_list(v.request_buffer[id][:message]['params'], resp)
                 if candidates.length > 0
@@ -260,8 +260,8 @@ module Mrbmacs
                 end
               end
             when 'textDocument/hover'
-              if frame.view_win.sci_autoc_active == 0
-                if resp['result'] != nil and resp['result']['contents']['value'] != nil
+              if !frame.view_win.sci_autoc_active
+                if resp['result'] != nil && resp['result']['contents']['value'] != nil
                   markup_kind = resp['result']['contents']['kind']
                   value = resp['result']['contents']['value']
                   if value.size > 0
@@ -271,7 +271,7 @@ module Mrbmacs
               end
             when 'textDocument/signatureHelp'
               @logger.debug resp['result']['signatures'].to_s
-              if resp['result'] != nil and resp['result']['signatures'] != nil
+              if resp['result'] != nil && resp['result']['signatures'] != nil
                 list = resp['result']['signatures'].map { |s| s['label'] }.uniq
                 @logger.debug list.to_s
                 if list.size > 0
@@ -304,55 +304,56 @@ module Mrbmacs
     end
 
     def lsp_send_completion_request(scn)
-      lang = @current_buffer.mode.name
-      if lsp_is_running?
-        line, col = get_current_line_col()
-        if col > 0
-          line_text = get_current_line_text.chomp[0..col]
-          input = line_text.split(" ").pop
-          td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-          if input != nil and input.length > 0
-            if lsp_signature_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-              @ext.data['lsp'][lang].signatureHelp(
-                { 'textDocument' => td, 'position' => lsp_position }
-              )
-            else
-              if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-                trigger_kind = 2
-                trigger_char = scn['ch'].chr('UTF-8')
-              else
-                trigger_kind = 1
-                trigger_char = ''
-              end
-              param = {
-                'textDocument' => td,
-                'position' => lsp_position,
-                'context' => { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
-              }
-              @logger.debug param.to_s
-              @ext.data['lsp'][lang].completion(param)
-            end
-          end
-        end
-      else
+      unless lsp_is_running?
         @logger.info 'not yet initialized'
+        return
+      end
+
+      lang = @current_buffer.mode.name
+      _line, col = get_current_line_col
+      return if col == 0
+
+      line_text = get_current_line_text.chomp[0..col]
+      input = line_text.split(' ').pop
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      if input != nil && input.length > 0
+        if lsp_signature_trigger_characters.include?(scn['ch'].chr('UTF-8'))
+          @ext.data['lsp'][lang].signatureHelp(
+            { 'textDocument' => td, 'position' => lsp_position }
+          )
+        else
+          if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
+            trigger_kind = 2
+            trigger_char = scn['ch'].chr('UTF-8')
+          else
+            trigger_kind = 1
+            trigger_char = ''
+          end
+          param = {
+            'textDocument' => td,
+            'position' => lsp_position,
+            'context' => { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
+          }
+          @logger.debug param.to_s
+          @ext.data['lsp'][lang].completion(param)
+        end
       end
     end
 
     def lsp_get_completion_list(req, res)
-      line, col = get_current_line_col
+      _line, col = get_current_line_col
       line_text = get_current_line_text.chomp[0..col]
-      input = if req.has_key?('context') &&
-        req['context'].has_key?('triggerKind') &&
-        req['context']['triggerKind'] == 2
+      input = if req.key?('context') &&
+                 req['context'].key?('triggerKind') &&
+                 req['context']['triggerKind'] == 2
                 ''
               else
                 line_text.split(/[ #{lsp_completion_trigger_characters.join}]/).pop
               end
-      if res.has_key?('result')
+      if res.key?('result')
         items = []
         if res['result'].is_a?(Hash)
-          if res['result'].has_key?('items')
+          if res['result'].key?('items')
             items = res['result']['items']
           end
         elsif res['result'].is_a?(Array)
@@ -397,7 +398,7 @@ module Mrbmacs
       diagnostics.each do |d|
         line = d['range']['start']['line']
         col = d['range']['start']['character'] + 1
-        message = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity']) + ':' + d['message']
+        message = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity']) + ':' + d['message'].gsub(/\n\n/, "\n")
         style = lsp_get_style_from_severity(d['severity'])
         if @frame.view_win.sci_annotation_get_lines(line) > 0
           message = @frame.view_win.sci_annotation_get_text(line) + "\n" + message
@@ -406,6 +407,35 @@ module Mrbmacs
         @frame.show_annotation(line + 1, col, message, style)
       end
       @frame.view_win.sci_scrollcaret
+    end
+
+    def lsp_additional_info(lsp_client)
+      "#{File.basename(lsp_client.server[:command])}:#{lsp_client.status.to_s[0]}"
+    end
+
+    def lsp_start_server(lang, filename)
+      if @ext.data['lsp'][lang].status == :stop
+        @ext.data['lsp'][lang].start_server(
+          {
+            'rootUri' => "file://#{@current_buffer.directory}",
+            'capabilities' => {
+              'workspace' => {},
+              'textDocument' => {
+              },
+              'trace' => 'verbose'
+            }
+          }
+        )
+        unless @ext.data['lsp'][lang].io.nil?
+          add_io_read_event(@ext.data['lsp'][lang].io) do |iapp, io|
+            iapp.lsp_read_message(io)
+          end
+        end
+      end
+      if @ext.data['lsp'][lang].status == :running
+        @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
+      end
+      @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])
     end
   end
 end
