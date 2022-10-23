@@ -239,64 +239,16 @@ module Mrbmacs
           next
         end
         @logger.debug resp.to_s
-        unless resp['id'].nil?
+        if !resp['id'].nil?
           # request or response
           id = resp['id'].to_i
-          unless v.request_buffer[id].nil?
-            @logger.debug v.request_buffer[id][:message]['method'].to_s
-            case v.request_buffer[id][:message]['method']
-            when 'initialize'
-              v.initialized(resp)
-              v.didOpen(
-                { 'textDocument' => LSP::Parameter::TextDocumentItem.new(@current_buffer.filename) }
-              )
-              @current_buffer.additional_info = lsp_additional_info(v)
-            when 'textDocument/completion'
-              if !@frame.view_win.sci_autoc_active && @frame.view_win.sci_calltip_active == 0
-                @logger.debug v.request_buffer[id].to_s
-                len, candidates = lsp_get_completion_list(v.request_buffer[id][:message]['params'], resp)
-                if candidates.length > 0
-                  @frame.view_win.sci_autoc_show(len, candidates)
-                end
-              end
-            when 'textDocument/hover'
-              if !frame.view_win.sci_autoc_active
-                if resp['result'] != nil && resp['result']['contents']['value'] != nil
-                  markup_kind = resp['result']['contents']['kind']
-                  value = resp['result']['contents']['value']
-                  if value.size > 0
-                    @frame.view_win.sci_calltip_show(@frame.view_win.sci_get_current_pos, value)
-                  end
-                end
-              end
-            when 'textDocument/signatureHelp'
-              @logger.debug resp['result']['signatures'].to_s
-              if resp['result'] != nil && resp['result']['signatures'] != nil
-                list = resp['result']['signatures'].map { |s| s['label'] }.uniq
-                @logger.debug list.to_s
-                if list.size > 0
-                  @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n"))
-                end
-              end
-            else
-              @logger.info 'unknown message'
-              @logger.info resp.to_s
-            end
-            v.request_buffer.delete(id)
+          if !v.request_buffer[id].nil?
+            lsp_response(v, id, resp)
           else # request?
             @logger.info resp.to_s
           end
         else # notification
-          case resp['method']
-          when 'textDocument/publishDiagnostics'
-            @logger.info 'publishDiagnostics'
-            if @current_buffer.filename == lsp_uri_to_path(resp['params']['uri'])
-              lsp_show_annotation(resp['params']['diagnostics'])
-            end
-          else
-            @logger.info "unknown method #{resp}"
-            @logger.info resp.to_s
-          end
+          lsp_notification(v, resp)
         end
         break
       end
