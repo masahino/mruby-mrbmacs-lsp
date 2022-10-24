@@ -122,7 +122,7 @@ module Mrbmacs
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
           app.lsp_sync_text
-          if !app.frame.view_win.sci_autoc_active
+          unless app.frame.view_win.sci_autoc_active
             app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
             app.lsp_send_completion_request(scn)
           end
@@ -159,6 +159,7 @@ module Mrbmacs
             app.find_file(target_file)
           end
           app.frame.view_win.sci_gotopos(app.frame.view_win.sci_find_column(lines.to_i - 1, col.to_i - 1))
+          app.recenter
         end
       end
     end
@@ -206,9 +207,9 @@ module Mrbmacs
 
     def lsp_completion_trigger_characters
       lang = @current_buffer.mode.name
-      if @ext.data['lsp'][lang] != nil &&
-         @ext.data['lsp'][lang].server_capabilities['completionProvider'] != nil &&
-         @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters'] != nil
+      if !@ext.data['lsp'][lang].nil? &&
+         !@ext.data['lsp'][lang].server_capabilities['completionProvider'].nil? &&
+         !@ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters'].nil?
         @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters']
       else
         []
@@ -217,9 +218,9 @@ module Mrbmacs
 
     def lsp_signature_trigger_characters
       lang = @current_buffer.mode.name
-      if @ext.data['lsp'][lang] != nil &&
-         @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider'] != nil &&
-         @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters'] != nil
+      if !@ext.data['lsp'][lang].nil? &&
+         !@ext.data['lsp'][lang].server_capabilities['signatureHelpProvider'].nil? &&
+         !@ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].nil?
         @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters']
       else
         []
@@ -230,7 +231,6 @@ module Mrbmacs
       @ext.data['lsp'].each_pair do |_k, v|
         next unless io == v.io
 
-        # if io == v.io
         headers, resp = v.recv_message
         if headers == {}
           @logger.error "server(#{v.server[:command]}) is not running"
@@ -267,28 +267,28 @@ module Mrbmacs
 
       line_text = get_current_line_text.chomp[0..col]
       input = line_text.split(' ').pop
+      return if input.nil? || input.length == 0
+
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      if input != nil && input.length > 0
-        if lsp_signature_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-          @ext.data['lsp'][lang].signatureHelp(
-            { 'textDocument' => td, 'position' => lsp_position }
-          )
+      if lsp_signature_trigger_characters.include?(scn['ch'].chr('UTF-8'))
+        @ext.data['lsp'][lang].signatureHelp(
+          { 'textDocument' => td, 'position' => lsp_position }
+        )
+      else
+        if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
+          trigger_kind = 2
+          trigger_char = scn['ch'].chr('UTF-8')
         else
-          if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-            trigger_kind = 2
-            trigger_char = scn['ch'].chr('UTF-8')
-          else
-            trigger_kind = 1
-            trigger_char = ''
-          end
-          param = {
-            'textDocument' => td,
-            'position' => lsp_position,
-            'context' => { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
-          }
-          @logger.debug param.to_s
-          @ext.data['lsp'][lang].completion(param)
+          trigger_kind = 1
+          trigger_char = ''
         end
+        param = {
+          'textDocument' => td,
+          'position' => lsp_position,
+          'context' => { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
+        }
+        @logger.debug param.to_s
+        @ext.data['lsp'][lang].completion(param)
       end
     end
 
@@ -314,11 +314,11 @@ module Mrbmacs
         # candidates = res['result']['items'].map { |h|
         candidates = items.map do |h|
           str = ''
-          if h['textEdit'] != nil
+          if !h['textEdit'].nil?
             str = h['textEdit']['newText'].strip
-          elsif h['insertText'] != nil
+          elsif !h['insertText'].nil?
             str = h['insertText'].strip
-          elsif h['label'] != nil
+          elsif !h['label'].nil?
             str = h['label'].strip
           end
           str

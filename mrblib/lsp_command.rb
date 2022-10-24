@@ -12,19 +12,7 @@ module Mrbmacs
         #        line, col = get_current_line_col()
         param = { 'textDocument' => td, 'position' => lsp_position }
         message "[lsp] sending \"#{method}\" message..."
-        @ext.data['lsp'][lang].send(method, param) do |resp|
-          list = resp['result'].map do |x|
-            sprintf("%s,%d,%d",
-                    lsp_uri_to_path(x['uri']),
-                    x['range']['start']['line'] + 1,
-                    x['range']['start']['character'] + 1)
-          end
-          message "[lsp] receive \"#{method}\" response(#{list.size})"
-          @logger.debug list
-          if list.size > 0
-            @frame.view_win.sci_userlist_show(LspExtension::LSP_LIST_TYPE, list.join(' '))
-          end
-        end
+        @ext.data['lsp'][lang].send(method, param)
       else
         message '[lsp] server is not running'
       end
@@ -77,9 +65,7 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].formatting(param) do |resp|
         @logger.debug 'resp'
         @logger.debug resp
-        if resp != nil
-          lsp_edit_buffer(resp['result'])
-        end
+        lsp_edit_buffer(resp['result']) unless resp.nil?
       end
     end
 
@@ -105,12 +91,10 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].rangeFormatting(param) do |resp|
         @logger.debug 'resp'
         @logger.debug resp
-        if resp != nil && resp.key?('result')
+        if !resp.nil? && resp.key?('result')
           lsp_edit_buffer(resp['result'])
-        else
-          if resp.key?('error')
-            message resp['error']['message']
-          end
+        elsif resp.key?('error')
+          message resp['error']['message']
         end
       end
     end
@@ -130,10 +114,8 @@ module Mrbmacs
       param = { 'textDocument' => td, 'position' => lsp_position, 'newName' => newstr }
       @ext.data['lsp'][@current_buffer.mode.name].rename(param) do |resp|
         @logger.debug resp
-        if resp.key?('result')
-          if resp['result']['changes'].key?('file://' + @current_buffer.filename)
-            lsp_edit_buffer(resp['result']['changes']['file://' + @current_buffer.filename])
-          end
+        if resp.key?('result') && resp['result']['changes'].key?('file://' + @current_buffer.filename)
+          lsp_edit_buffer(resp['result']['changes']['file://' + @current_buffer.filename])
         end
       end
     end
