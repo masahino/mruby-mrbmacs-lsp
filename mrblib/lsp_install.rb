@@ -13,7 +13,7 @@ module Mrbmacs
       installed_servers = {}
       LSP_SERVERS.each do |k, v|
         v.each do |s|
-          if Dir.exist? lsp_server_dir(s['command'])
+          if !lsp_server_dir(s['command']).nil? && Dir.exist?(lsp_server_dir(s['command']))
             installed_servers[k] = { 'command' => "#{lsp_server_dir(s['command'])}/#{s['command']}",
                                      'options' => s['options'] }
             break
@@ -23,7 +23,7 @@ module Mrbmacs
       installed_servers
     end
 
-    def lsp_data_dir
+    def lsp_data_dir(create_dir = false)
       data_dir = if !ENV['LOCALAPPDATA'].nil?
                    "#{ENV['LOCALAPPDATA']}/mrbmacs-lsp/"
                  elsif !ENV['XDG_DATA_HOME'].nil?
@@ -31,16 +31,22 @@ module Mrbmacs
                  elsif !ENV['HOME'].nil?
                    "#{ENV['HOME']}/.local/share/mrbmacs-lsp/"
                  end
-      Dir.mkdir(data_dir) unless Dir.exist?(data_dir)
-      data_dir
+      if create_dir && !Dir.exist?(data_dir)
+        Dir.mkdir(data_dir)
+        data_dir
+      end
+      nil
     end
 
-    def lsp_server_dir(server)
+    def lsp_server_dir(server, create_dir = false)
       data_dir = lsp_data_dir
       return nil if data_dir.nil?
 
-      Dir.mkdir("#{data_dir}/servers") unless Dir.exist?("#{data_dir}/servers")
-      "#{data_dir}servers/#{server}"
+      if create_dir && !Dir.exist?("#{data_dir}/servers")
+        Dir.mkdir("#{data_dir}/servers")
+        "#{data_dir}servers/#{server}"
+      end
+      nil
     end
 
     def lsp_installer_dir
@@ -119,12 +125,11 @@ module Mrbmacs
       install_cmd = lsp_install_command(server)
       return unless File.exist?(install_cmd)
 
-      server_dir = lsp_server_dir(server)
+      server_dir = lsp_server_dir(server, true)
       return if server_dir.nil?
 
       Dir.mkdir(server_dir) unless Dir.exist?(server_dir)
       exec_shell_command('*LSPInstall*', "(cd #{server_dir} ; #{install_cmd})") do |res|
-        
       end
     end
   end
