@@ -1,23 +1,6 @@
 module Mrbmacs
   # LSP commands
-  class Application
-    def lsp_goto_command(method, capability)
-      lang = @current_buffer.mode.name
-      if @ext.data['lsp'][lang].server_capabilities[capability] == false
-        message "#{capability} is not supported"
-        return nil
-      end
-      if lsp_is_running?
-        td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-        #        line, col = get_current_line_col()
-        param = { 'textDocument' => td, 'position' => lsp_position }
-        message "[lsp] sending \"#{method}\" message..."
-        @ext.data['lsp'][lang].send(method, param)
-      else
-        message '[lsp] server is not running'
-      end
-    end
-
+  module Command
     def lsp_declaration
       lsp_goto_command('declaration', 'declarationProvider')
     end
@@ -36,19 +19,6 @@ module Mrbmacs
 
     def lsp_references
       lsp_goto_command('references', 'referencesProvider')
-    end
-
-    def lsp_edit_buffer(text_edit)
-      sci_begin_undo_action
-      text_edit.reverse_each do |e|
-        @logger.debug e
-        @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
-                                                                   e['range']['start']['character']),
-                                    @frame.view_win.sci_findcolumn(e['range']['end']['line'],
-                                                                   e['range']['end']['character']))
-        sci_replace_sel('', e['newText'])
-      end
-      sci_end_undo_action
     end
 
     def lsp_formatting
@@ -120,6 +90,12 @@ module Mrbmacs
       end
     end
 
+    def lsp_server_capabilities
+      return unless lsp_is_running?
+
+      @logger.info JSON.pretty_generate @ext.data['lsp'][@current_buffer.mode.name].server_capabilities
+    end
+
     def lsp_hover
       return unless lsp_is_running?
 
@@ -140,6 +116,57 @@ module Mrbmacs
         'context' => { 'triggerKind' => 1, 'triggerCharacter' => '' }
       }
       @ext.data['lsp'][@current_buffer.mode.name].completion(param)
+    end
+
+    def lsp_install_server(server = nil)
+      lang = lsp_select_lang_for_server
+      server = lsp_select_install_server(lang) if server.nil?
+      return if server.nil?
+
+      install_cmd = lsp_install_command(server)
+      return unless File.exist?(install_cmd)
+
+      server_dir = lsp_server_dir(server, true)
+      return if server_dir.nil?
+
+      Dir.mkdir(server_dir) unless Dir.exist?(server_dir)
+      exec_shell_command('*LSPInstall*', "(cd #{server_dir} ; #{install_cmd})") do |res|
+      end
+    end
+  end
+
+  # for commands
+  class Application
+    include Command
+
+    def lsp_goto_command(method, capability)
+      lang = @current_buffer.mode.name
+      if @ext.data['lsp'][lang].server_capabilities[capability] == false
+        message "#{capability} is not supported"
+        return nil
+      end
+      if lsp_is_running?
+        td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+        #        line, col = get_current_line_col()
+        param = { 'textDocument' => td, 'position' => lsp_position }
+        message "[lsp] sending \"#{method}\" message..."
+        @ext.data['lsp'][lang].send(method, param)
+      else
+        message '[lsp] server is not running'
+      end
+    end
+
+    def lsp_edit_buffer(text_edit)
+      sci_begin_undo_action
+      text_edit.reverse_each do |e|
+        @logger.debug e
+        @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
+                                                                   e['range']['start']['character']),
+                                    @frame.view_win.sci_findcolumn(e['range']['end']['line'],
+                                                                   e['range']['end']['character']))
+        sci_replace_sel('', e['newText'])
+      end
+      sci_end_undo_action
     end
   end
 end

@@ -50,8 +50,8 @@ module Mrbmacs
     }
 
     LSP_DEFAULT_KEYMAP = {
-      'M-r' => 'lsp-references',
-      'M-d' => 'lsp-definition'
+      'M-r' => 'lsp_references',
+      'M-d' => 'lsp_definition'
     }
     def self.register_lsp_client(appl)
       appl.config.use_builtin_completion = false

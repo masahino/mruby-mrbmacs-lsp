@@ -7,6 +7,7 @@ module Mrbmacs
         { 'textDocument' => LSP::Parameter::TextDocumentItem.new(@current_buffer.filename) }
       )
       @current_buffer.additional_info = lsp_additional_info(lsp_server)
+      @logger.info JSON.pretty_generate lsp_server.server_capabilities
     end
 
     def lsp_response_completion(lsp_server, id, resp)

@@ -32,8 +32,8 @@ example of ~/.mrbmacsrc
 |completion resolve|No|
 |hover          |Yes|
 |signatureHelp  |Yes|
-|declaration    |Yes|lsp_goto_declaration|
-|definition     |Yes|lsp_goto_definition|
+|declaration    |Yes|lsp_declaration|
+|definition     |Yes|lsp_definition|
 |typeDefinition |No|lsp_type_definition|
 |implementation |No|lsp_implementation|
 |references     |No|lsp_references|

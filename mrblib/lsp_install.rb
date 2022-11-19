@@ -116,21 +116,5 @@ module Mrbmacs
         Mrbmacs::LspExtension.set_keybind(self, lang)
       end
     end
-
-    def lsp_install_server(server = nil)
-      lang = lsp_select_lang_for_server
-      server = lsp_select_install_server(lang) if server.nil?
-      return if server.nil?
-
-      install_cmd = lsp_install_command(server)
-      return unless File.exist?(install_cmd)
-
-      server_dir = lsp_server_dir(server, true)
-      return if server_dir.nil?
-
-      Dir.mkdir(server_dir) unless Dir.exist?(server_dir)
-      exec_shell_command('*LSPInstall*', "(cd #{server_dir} ; #{install_cmd})") do |res|
-      end
-    end
   end
 end
