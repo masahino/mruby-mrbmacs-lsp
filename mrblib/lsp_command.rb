@@ -45,8 +45,6 @@ module Mrbmacs
 
       @logger.debug 'lsp_range_formatting go'
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      #       anchor_line, anchor_col = get_current_line_col(@mark_pos)
-      #        current_line, current_col = get_current_line_col(sci_get_current_pos())
       param = {
         'textDocument' => td, 'options' => {
           'range' => {
@@ -80,7 +78,6 @@ module Mrbmacs
       @logger.debug "srtart = #{word_start}, end = #{word_end}, word = #{word}"
       newstr = @frame.echo_gets("Replace string #{word} with: ", '')
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      #        line, col = get_current_line_col
       param = { 'textDocument' => td, 'position' => lsp_position, 'newName' => newstr }
       @ext.data['lsp'][@current_buffer.mode.name].rename(param) do |resp|
         @logger.debug resp
@@ -99,7 +96,6 @@ module Mrbmacs
     def lsp_hover
       return unless lsp_is_running?
 
-      #        line, col = get_current_line_col()
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
       param = { 'textDocument' => td, 'position' => lsp_position }
       @ext.data['lsp'][@current_buffer.mode.name].hover(param)
@@ -108,7 +104,6 @@ module Mrbmacs
     def lsp_completion
       return unless lsp_is_running?
 
-      #       line, col = get_current_line_col()
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
       param = {
         'textDocument' => td,
@@ -147,7 +142,6 @@ module Mrbmacs
       end
       if lsp_is_running?
         td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-        #        line, col = get_current_line_col()
         param = { 'textDocument' => td, 'position' => lsp_position }
         message "[lsp] sending \"#{method}\" message..."
         @ext.data['lsp'][lang].send(method, param)

@@ -1,25 +1,31 @@
+# Logger
 class Logger
   attr_reader :log
-  def initialize(logfile)
-    @log = { :debug => [], :info => [], :error => []}
+
+  def initialize(_logfile)
+    @log = { debug: [], info: [], error: [] }
   end
+
   def debug(message)
     @log[:debug].push message
   end
+
   def info(message)
     @log[:info].push message
   end
+
   def error(message)
     @log[:error].push message
   end
 end
 
 module Mrbmacs
+  # TestApp
   class TestApp < Application
-    attr_accessor :ext, :logger
-    attr_accessor :get_current_line_col, :get_current_line_text
+    attr_accessor :ext, :logger, :current_line_col, :current_line_text
+
     def initialize
-      @current_buffer = Buffer.new("*scratch*")
+      @current_buffer = Buffer.new('*scratch*')
       @frame = Mrbmacs::Frame.new(@current_buffer)
       @buffer_list = []
       @theme = Theme.new
@@ -32,38 +38,35 @@ module Mrbmacs
     end
 
     def add_buffer_to_frame(buffer)
+      # dummy
     end
   end
 
+  # Frame
   class Frame
-    attr_accessor :view_win, :echo_win, :tk
-    attr_accessor :echo_message
-    attr_accessor :edit_win
+    attr_accessor :view_win, :echo_win, :tk, :echo_message, :edit_win
+
     def initialize(buffer)
       @view_win = Scintilla::TestScintilla.new
       @echo_win = Scintilla::TestScintilla.new
       @edit_win = Mrbmacs::EditWindow.new(self, buffer, 0, 0, 0, 0)
     end
 
-    def waitkey(win)
-    end
+    def waitkey(win) end
 
-    def strfkey(key)
-    end
+    def strfkey(key) end
 
-    def echo_set_prompt(prompt)
-    end
+    def echo_set_prompt(prompt) end
 
-    def echo_gets(prompt, text = "", &block)
-      "test"
+    def echo_gets(_prompt, _text = '', &_block)
+      'test'
     end
 
     def echo_puts(text)
       @echo_message = text
     end
 
-    def modeline(app)
-    end
+    def modeline(app) end
 
     def exit
     end
@@ -77,17 +80,17 @@ end
 
 module Scintilla
   Scintilla::PLATFORM = :TEST
+  # TestScintilla
   class TestScintilla < ScintillaBase
-    attr_accessor :pos
-    attr_accessor :messages
-    attr_accessor :test_return
+    attr_accessor :pos, :messages, :test_return
+
     def initialize
       @pos = 0
       @messages = []
       @test_return = {}
     end
 
-    def send_message(id, *args)
+    def send_message(id, *_args)
       @messages.push id
       if @test_return[id] != nil
         return @test_return[id]
@@ -96,42 +99,38 @@ module Scintilla
       end
     end
 
-    def send_message_get_docpointer(message, *args)
-    end
+    def send_message_get_docpointer(message, *args) end
 
-    def send_message_set_docpointer(id, wparam)
-    end
+    def send_message_set_docpointer(id, wparam) end
 
-    def resize_window(height, width)
-    end
+    def resize_window(height, width) end
 
-    def move_window(x, y)
-    end
+    def move_window(x, y) end
 
-    def refresh
-    end
+    def refresh() end
 
-    def sci_set_lexer_language(lang)
-    end
+    def sci_set_lexer_language(lang) end
 
-    def send_key(key, mod_shift, mod_ctrl, mod_alt)
-    end
+    def send_key(key, mod_shift, mod_ctrl, mod_alt) end
 
-#   def sci_get_current_pos()
-#      @pos
-#    end
+    #   def sci_get_current_pos()
+    #      @pos
+    #    end
 
-    def sci_get_curline()
+    def sci_get_curline
       []
     end
-
   end
 end
 
+# TermKey
 class TermKey
   attr_accessor :key_buffer
+
+  # Key
   class Key
     attr_accessor :key_str
+
     def initialize(key = nil)
       if key != nil
         @code = key.chr
@@ -142,7 +141,7 @@ class TermKey
         @code = 0
         @type = TermKey::TYPE_UNKNOWN_CSI
         @modifiers = 0
-        @key_str = ""
+        @key_str = ''
       end
     end
 
@@ -157,10 +156,9 @@ class TermKey
     def code
       @code
     end
-
   end
 
-  def initialize(fd, flag)
+  def initialize(_fd, _flag)
     @key_buffer = []
   end
 
@@ -172,7 +170,7 @@ class TermKey
     end
   end
 
-  def strfkey(key, flag)
+  def strfkey(key, _flag)
     key.key_str
   end
 
@@ -186,7 +184,9 @@ class TermKey
 end
 
 def exit
+  # dummy
 end
+
 def setup_app
   Mrbmacs::TestApp.new
 end

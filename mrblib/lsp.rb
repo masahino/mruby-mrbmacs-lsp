@@ -145,7 +145,7 @@ module Mrbmacs
       appl.add_sci_event(Scintilla::SCN_DWELLSTART) do |app, scn|
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
-          _line, _col = app.get_current_line_col(scn['pos'])
+          _line, _col = app.line_col_from_pos(scn['pos'])
           td = LSP::Parameter::TextDocumentIdentifier.new(app.current_buffer.filename)
           param = { 'textDocument' => td, 'position' => app.lsp_position(scn['pos']) }
           app.ext.data['lsp'][lang].hover(param)
@@ -262,10 +262,10 @@ module Mrbmacs
       end
 
       lang = @current_buffer.mode.name
-      _line, col = get_current_line_col
+      _line, col = current_line_col
       return if col == 0
 
-      line_text = get_current_line_text.chomp[0..col]
+      line_text = current_line_text.chomp[0..col]
       input = line_text.split(' ').pop
       return if input.nil? || input.length == 0
 
@@ -293,8 +293,8 @@ module Mrbmacs
     end
 
     def lsp_get_completion_list(req, res)
-      _line, col = get_current_line_col
-      line_text = get_current_line_text.chomp[0..col]
+      _line, col = current_line_col
+      line_text = current_line_text.chomp[0..col]
       input = if req.key?('context') &&
                  req['context'].key?('triggerKind') &&
                  req['context']['triggerKind'] == 2
@@ -372,8 +372,7 @@ module Mrbmacs
             'rootUri' => "file://#{@current_buffer.directory}",
             'capabilities' => {
               'workspace' => {},
-              'textDocument' => {
-              },
+              'textDocument' => {},
               'trace' => 'verbose'
             }
           }

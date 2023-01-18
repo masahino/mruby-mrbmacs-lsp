@@ -34,8 +34,8 @@ end
 assert('def lsp_get_completion_list') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
-  app.get_current_line_col = [1, 1]
-  app.get_current_line_text = "hoge\n"
+  app.current_line_col = [1, 1]
+  app.current_line_text = "hoge\n"
   assert_equal [2, ''], app.lsp_get_completion_list({}, {})
   assert_equal [2, ''], app.lsp_get_completion_list({}, { 'result' => {} })
   resp = {
@@ -47,8 +47,8 @@ assert('def lsp_get_completion_list') do
     }
   }
   assert_equal [2, 'hogege hogehoge'], app.lsp_get_completion_list({}, resp)
-  app.get_current_line_col = [1, 5]
-  app.get_current_line_text = 'hoge("'
+  app.current_line_col = [1, 5]
+  app.current_line_text = 'hoge("'
   assert_equal [6, 'hogege hogehoge'], app.lsp_get_completion_list({}, resp)
 end
 
