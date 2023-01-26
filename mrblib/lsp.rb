@@ -350,10 +350,14 @@ module Mrbmacs
       diagnostics.each do |d|
         line = d['range']['start']['line']
         col = d['range']['start']['character'] + 1
-        message = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity']) + ':' + d['message'].gsub(/\n\n/, "\n")
+        severity_str = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity'])
+        message = "#{severity_str}:#{d['message'].gsub(/\n\n/, "\n")}"
+        # margin(6+2) + scrollbar
+        max_len = @frame.edit_win.width - 11 - @frame.view_win.sci_get_line_indentation(line)
+        message.insert(max_len, "\n#{' ' * (severity_str.length + 1)}") if message.length > max_len
         style = lsp_get_style_from_severity(d['severity'])
         if @frame.view_win.sci_annotation_get_lines(line) > 0
-          message = @frame.view_win.sci_annotation_get_text(line) + "\n" + message
+          message = "#{@frame.view_win.sci_annotation_get_text(line)}\n#{message}"
           style = @frame.view_win.sci_annotation_get_style(line)
         end
         @frame.show_annotation(line + 1, col, message, style)
