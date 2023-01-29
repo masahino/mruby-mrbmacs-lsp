@@ -33,9 +33,12 @@ module Mrbmacs
                  end
       if create_dir && !Dir.exist?(data_dir)
         Dir.mkdir(data_dir)
-        data_dir
       end
-      nil
+      if Dir.exist?(data_dir)
+        data_dir
+      else
+        nil
+      end
     end
 
     def lsp_server_dir(server, create_dir = false)
@@ -44,9 +47,12 @@ module Mrbmacs
 
       if create_dir && !Dir.exist?("#{data_dir}/servers")
         Dir.mkdir("#{data_dir}/servers")
-        "#{data_dir}servers/#{server}"
       end
-      nil
+      if Dir.exist?("#{data_dir}/servers")
+        "#{data_dir}servers/#{server}"
+      else
+        nil
+      end
     end
 
     def lsp_installer_dir
