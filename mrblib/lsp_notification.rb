@@ -8,6 +8,8 @@ module Mrbmacs
         if @current_buffer.filename == lsp_uri_to_path(message['params']['uri'])
           lsp_show_annotation(message['params']['diagnostics'])
         end
+      when 'telemetry/event'
+        @logger.info message.to_s
       else
         @logger.info "unknown method #{message}"
         @logger.info message.to_s
