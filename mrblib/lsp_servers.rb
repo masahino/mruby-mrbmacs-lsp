@@ -117,6 +117,16 @@ module Mrbmacs
         'command' => 'solargraph',
         'options' => { 'args' => ['stdio'] },
         'requires' => ['gem']
+      },
+      {
+        'command' => 'ruby-lsp',
+        'options' => { 'args' => ['stdio'] },
+        'requires' => ['gem']
+      },
+      {
+        'command' => 'ruby_language_server',
+        'options' => {},
+        'requires' => ['gem']
       }
     ],
     'rust' => [
