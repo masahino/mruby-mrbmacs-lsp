@@ -122,6 +122,7 @@ module Mrbmacs
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
           app.lsp_sync_text
+          app.lsp_on_type_formatting(scn['ch'].chr('UTF-8'))
           unless app.frame.view_win.sci_autoc_active
             app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
             app.lsp_send_completion_request(scn)
@@ -205,26 +206,34 @@ module Mrbmacs
       uri.gsub('file://', '')
     end
 
-    def lsp_completion_trigger_characters
+    def lsp_trigger_characters(provider, parameter = 'triggerCharacters')
       lang = @current_buffer.mode.name
       if !@ext.data['lsp'][lang].nil? &&
-         !@ext.data['lsp'][lang].server_capabilities['completionProvider'].nil? &&
-         !@ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters'].nil?
-        @ext.data['lsp'][lang].server_capabilities['completionProvider']['triggerCharacters']
+         !@ext.data['lsp'][lang].server_capabilities[provider].nil? &&
+         !@ext.data['lsp'][lang].server_capabilities[provider][parameter].nil?
+        @ext.data['lsp'][lang].server_capabilities[provider][parameter]
       else
         []
       end
     end
 
-    def lsp_signature_trigger_characters
+    def lsp_on_type_formatting_trigger_characters
+      triggers = []
       lang = @current_buffer.mode.name
       if !@ext.data['lsp'][lang].nil? &&
-         !@ext.data['lsp'][lang].server_capabilities['signatureHelpProvider'].nil? &&
-         !@ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters'].nil?
-        @ext.data['lsp'][lang].server_capabilities['signatureHelpProvider']['triggerCharacters']
-      else
-        []
+         !@ext.data['lsp'][lang].server_capabilities['documentOnTypeFormattingProvider'].nil? &&
+         !@ext.data['lsp'][lang].server_capabilities['documentOnTypeFormattingProvider']['firstTriggerCharacter'].nil?
+        triggers.push @ext.data['lsp'][lang].server_capabilities['documentOnTypeFormattingProvider']['firstTriggerCharacter']
       end
+      triggers.union(lsp_trigger_characters('documentOnTypeFormattingProvider', 'moreTriggerCharacter'))
+    end
+
+    def lsp_completion_trigger_characters
+      lsp_trigger_characters('completionProvider')
+    end
+
+    def lsp_signature_trigger_characters
+      lsp_trigger_characters('signatureHelpProvider')
     end
 
     def lsp_read_message(io)
@@ -376,7 +385,11 @@ module Mrbmacs
             'rootUri' => "file://#{@current_buffer.directory}",
             'capabilities' => {
               'workspace' => {},
-              'textDocument' => {},
+              'textDocument' => {
+                'onTypeFormatting' => {
+                  'dynamicRegistration' => true
+                }
+              },
               'trace' => 'verbose'
             }
           }

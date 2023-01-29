@@ -46,11 +46,12 @@ module Mrbmacs
       @logger.debug 'lsp_range_formatting go'
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
       param = {
-        'textDocument' => td, 'options' => {
-          'range' => {
-            'start' => lsp_position(@mark_pos),
-            'end' => lsp_position
-          },
+        'textDocument' => td,
+        'range' => {
+          'start' => lsp_position(@mark_pos),
+          'end' => lsp_position
+        },
+        'options' => {
           'tabSize' => @current_buffer.mode.indent,
           'insertSpaces' => !@current_buffer.mode.use_tab
         }
@@ -125,6 +126,7 @@ module Mrbmacs
       return if server_dir.nil?
 
       Dir.mkdir(server_dir) unless Dir.exist?(server_dir)
+
       exec_shell_command('*LSPInstall*', "(cd #{server_dir} ; #{install_cmd})") do |res|
       end
     end
@@ -152,6 +154,7 @@ module Mrbmacs
 
     def lsp_edit_buffer(text_edit)
       sci_begin_undo_action
+      last_pos = nil
       text_edit.reverse_each do |e|
         @logger.debug e
         @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
@@ -159,7 +162,9 @@ module Mrbmacs
                                     @frame.view_win.sci_findcolumn(e['range']['end']['line'],
                                                                    e['range']['end']['character']))
         sci_replace_sel('', e['newText'])
+        last_pos = @frame.view_win.sci_get_current_pos if last_pos.nil?
       end
+      @frame.view_win.sci_goto_pos(last_pos) unless last_pos.nil?
       sci_end_undo_action
     end
   end
