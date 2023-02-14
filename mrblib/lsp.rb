@@ -119,28 +119,20 @@ module Mrbmacs
       end
 
       appl.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
+        next unless app.lsp_is_running?
+
         lang = app.current_buffer.mode.name
-        if app.lsp_is_running?
-          app.lsp_sync_text
-          app.lsp_on_type_formatting(scn['ch'].chr('UTF-8'))
-          unless app.frame.view_win.sci_autoc_active
-            app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
-            app.lsp_send_completion_request(scn)
-          end
+         app.lsp_on_type_formatting(scn['ch'].chr('UTF-8'))
+        unless app.frame.view_win.sci_autoc_active
+          app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
+          app.lsp_send_completion_request(scn)
         end
       end
 
-      appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, _scn|
-        lang = app.current_buffer.mode.name
-        if app.lsp_is_running?
-          td = LSP::Parameter::VersionedTextDocumentIdentifier.new(app.current_buffer.filename, 0)
-          cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(app.frame.view_win.sci_get_text(app.frame.view_win.sci_get_length + 1))]
-          param = { 'textDocument' => td, 'contentChanges' => cc }
-          if app.ext.data['lsp'][lang].file_version[td.uri].nil?
-            app.ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
-          end
-          app.ext.data['lsp'][lang].didChange(param)
-        end
+      appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
+        next unless app.lsp_is_running?
+
+        app.lsp_did_change(scn)
       end
 
       appl.add_sci_event(Scintilla::SCN_DWELLSTART) do |app, scn|
@@ -285,10 +277,10 @@ module Mrbmacs
         )
       else
         if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-          trigger_kind = 2
+          trigger_kind = LSP::CompletionTriggerKind::TRIGGER_CHARACTER # 2
           trigger_char = scn['ch'].chr('UTF-8')
         else
-          trigger_kind = 1
+          trigger_kind = LSP::CompletionTriggerKind::INVOKED # 1
           trigger_char = ''
         end
         param = {
@@ -302,11 +294,12 @@ module Mrbmacs
     end
 
     def lsp_get_completion_list(req, res)
+@logger.info res
       _line, col = current_line_col
       line_text = current_line_text.chomp[0..col]
       input = if req.key?('context') &&
                  req['context'].key?('triggerKind') &&
-                 req['context']['triggerKind'] == 2
+                 req['context']['triggerKind'] == LSP::CompletionTriggerKind::TRIGGER_CHARACTER
                 ''
               else
                 line_text.split(/[ #{lsp_completion_trigger_characters.join}]/).pop

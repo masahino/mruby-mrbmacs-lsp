@@ -32,11 +32,7 @@ module Mrbmacs
           'insertSpaces' => !@current_buffer.mode.use_tab
         }
       }
-      @ext.data['lsp'][@current_buffer.mode.name].formatting(param) do |resp|
-        @logger.debug 'resp'
-        @logger.debug resp
-        lsp_edit_buffer(resp['result']) unless resp.nil?
-      end
+      @ext.data['lsp'][@current_buffer.mode.name].formatting(param)
     end
 
     def lsp_range_formatting
@@ -57,15 +53,7 @@ module Mrbmacs
         }
       }
       @logger.debug param
-      @ext.data['lsp'][@current_buffer.mode.name].rangeFormatting(param) do |resp|
-        @logger.debug 'resp'
-        @logger.debug resp
-        if !resp.nil? && resp.key?('result')
-          lsp_edit_buffer(resp['result'])
-        elsif resp.key?('error')
-          message resp['error']['message']
-        end
-      end
+      @ext.data['lsp'][@current_buffer.mode.name].rangeFormatting(param)
     end
 
     def lsp_rename
@@ -80,12 +68,7 @@ module Mrbmacs
       newstr = @frame.echo_gets("Replace string #{word} with: ", '')
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
       param = { 'textDocument' => td, 'position' => lsp_position, 'newName' => newstr }
-      @ext.data['lsp'][@current_buffer.mode.name].rename(param) do |resp|
-        @logger.debug resp
-        if resp.key?('result') && resp['result']['changes'].key?('file://' + @current_buffer.filename)
-          lsp_edit_buffer(resp['result']['changes']['file://' + @current_buffer.filename])
-        end
-      end
+      @ext.data['lsp'][@current_buffer.mode.name].rename(param)
     end
 
     def lsp_server_capabilities
@@ -109,7 +92,8 @@ module Mrbmacs
       param = {
         'textDocument' => td,
         'position' => lsp_position,
-        'context' => { 'triggerKind' => 1, 'triggerCharacter' => '' }
+        'context' => { 'triggerKind' => LSP::CompletionTriggerKind::INVOKED,
+                       'triggerCharacter' => '' }
       }
       @ext.data['lsp'][@current_buffer.mode.name].completion(param)
     end
@@ -155,7 +139,8 @@ module Mrbmacs
     def lsp_edit_buffer(text_edit)
       sci_begin_undo_action
       last_pos = nil
-      text_edit.reverse_each do |e|
+      # text_edit.reverse_each do |e|
+      text_edit.each do |e|
         @logger.debug e
         @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
                                                                    e['range']['start']['character']),
@@ -164,7 +149,7 @@ module Mrbmacs
         sci_replace_sel('', e['newText'])
         last_pos = @frame.view_win.sci_get_current_pos if last_pos.nil?
       end
-      @frame.view_win.sci_goto_pos(last_pos) unless last_pos.nil?
+      # @frame.view_win.sci_goto_pos(last_pos) unless last_pos.nil?
       sci_end_undo_action
     end
   end

@@ -9,7 +9,9 @@ module Mrbmacs
           lsp_show_annotation(message['params']['diagnostics'])
         end
       when 'telemetry/event'
-        @logger.info message.to_s
+        @logger.debug message.to_s
+      when 'window/logMessage'
+        @logger.info message['params']['message']
       else
         @logger.info "unknown method #{message}"
         @logger.info message.to_s

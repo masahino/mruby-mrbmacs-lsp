@@ -37,6 +37,23 @@ module Mrbmacs
       @config = Config.new
     end
 
+    def find_file(file)
+      @text = File.open(file).read
+    end
+
+    def line_col_from_pos(pos)
+      line = @text[0..pos].count("\n")
+      if @text[0..pos].split("\n").length == line
+        if pos == @text[0..pos].length
+          [line, 0]
+        else
+          [line - 1, @text[0..pos].split("\n")[line - 1].length]
+        end
+      else
+        [line, @text[0..pos].split("\n")[line].length - 1]
+      end
+    end
+
     def add_buffer_to_frame(buffer)
       # dummy
     end
