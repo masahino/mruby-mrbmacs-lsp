@@ -18,8 +18,9 @@ module Mrbmacs
       return if @frame.view_win.sci_autoc_active || @frame.view_win.sci_calltip_active
 
       @logger.debug lsp_server.request_buffer[id].to_s
+      @logger.debug JSON.pretty_generate resp
       len, candidates = lsp_get_completion_list(lsp_server.request_buffer[id][:message]['params'], resp)
-      @frame.view_win.sci_autoc_show(len, candidates) if candidates.length > 0
+      @frame.view_win.sci_autoc_show(len, candidates) unless candidates.empty?
     end
 
     def lsp_response_text_document_hover(_lsp_server, _id, resp)
@@ -28,7 +29,7 @@ module Mrbmacs
 
       # markup_kind = resp['result']['contents']['kind']
       value = resp['result']['contents']['value']
-      @frame.view_win.sci_calltip_show(@frame.view_win.sci_get_current_pos, value) if value.size > 0
+      @frame.view_win.sci_calltip_show(@frame.view_win.sci_get_current_pos, value) unless value.empty?
     end
 
     def lsp_response_text_document_signature_help(_lsp_server, _id, resp)
@@ -37,7 +38,7 @@ module Mrbmacs
 
       list = resp['result']['signatures'].map { |s| s['label'] }.uniq
       @logger.debug list.to_s
-      @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n")) if list.size > 0
+      @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n")) unless list.empty?
     end
 
     def lsp_goto_response(lsp_server, id, resp)
@@ -47,7 +48,7 @@ module Mrbmacs
       end
       message "[lsp] receive \"#{method}\" response(#{list.size})"
       @logger.debug list
-      @frame.view_win.sci_userlist_show(LspExtension::LSP_LIST_TYPE, list.join(' ')) if list.size > 0
+      @frame.view_win.sci_userlist_show(LspExtension::LSP_GOTO_LIST_TYPE, list.join(' ')) unless list.empty?
     end
 
     def lsp_response_text_document_declaration(lsp_server, id, resp)
