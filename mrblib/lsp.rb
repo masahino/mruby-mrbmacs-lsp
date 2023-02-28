@@ -3,99 +3,16 @@ module Mrbmacs
   class LspExtension < Extension
     LSP_GOTO_LIST_TYPE = 99
     LSP_COMPLETION_LIST_TYPE = 98
-    LSP_DEFAULT_CONFIG = {
-      'bash' => {
-        'command' => 'bash-language-server',
-        'options' => { 'args' => ['start'] }
-      },
-      'cpp' => {
-        'command' => 'ccls',
-        'options' => {}
-      },
-      'go' => {
-        'command' => 'gopls',
-        'options' => {}
-      },
-      'html' => {
-        'command' => 'html-languageserver',
-        'options' => { 'args' => ['--stdio'] }
-      },
-      'javascript' => {
-        'command' => 'typescript-language-server',
-        'options' => { 'args' => ['--stdio'] }
-      },
-      'markdown' => {
-        'command' => 'remark-language-server',
-        'options' => { 'args' => ['--stdio'] }
-      },
-      'perl' => {
-        'command' => 'perl',
-        'options' => { 'args' => ['-MPerl::LanguageServer', '-e', '"Perl::LanguageServer->run"'] }
-      },
-      'python' => {
-        'command' => 'pyls',
-        'options' => {}
-      },
-      'r' => {
-        'command' => 'R',
-        'options' => { 'args' => ['--slave', '-e', 'languageserver::run\(\)'] }
-      },
-      'ruby' => {
-        'command' => 'solargraph',
-        'options' => { 'args' => ['stdio'] }
-      },
-      'rust' => {
-        'command' => 'rls',
-        'options' => {}
-      }
-    }
 
-    LSP_DEFAULT_KEYMAP = {
-      'M-r' => 'lsp_references',
-      'M-d' => 'lsp_definition'
-    }
     def self.register_lsp_client(appl)
       appl.lsp_init
+
       appl.add_command_event(:after_find_file) do |app, filename|
-        lang = app.current_buffer.mode.name
-        if app.lsp_find_server(lang)
-          if app.ext.data['lsp'][lang].status == :stop
-            app.ext.data['lsp'][lang].start_server(
-              {
-                'rootUri' => "file://#{app.current_buffer.directory}",
-                'capabilities' => {
-                  'workspace' => {},
-                  'textDocument' => {
-                    #                    'hover' => {
-                    #                      'contentFormat' => 'plaintext',
-                    #                    },
-                  },
-                  'trace' => 'verbose'
-                }
-              }
-            )
-            unless app.ext.data['lsp'][lang].io.nil?
-              app.add_io_read_event(app.ext.data['lsp'][lang].io) do |iapp, io|
-                iapp.lsp_read_message(io)
-              end
-            end
-          end
-          if app.ext.data['lsp'][lang].status == :running
-            app.ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
-          end
-          app.current_buffer.additional_info = app.lsp_additional_info(app.ext.data['lsp'][lang])
-        end
+        app.lsp_find_file(filename)
       end
 
       appl.add_command_event(:after_save_buffer) do |app, filename|
-        lang = app.current_buffer.mode.name
-        if app.lsp_is_running?
-          app.ext.data['lsp'][lang].didSave(
-            {
-              'textDocument' => LSP::Parameter::TextDocumentIdentifier.new(filename)
-            }
-          )
-        end
+        app.lsp_did_save(filename)
       end
 
       appl.add_command_event(:before_save_buffers_kill_terminal) do |app|
@@ -113,7 +30,7 @@ module Mrbmacs
         lang = app.current_buffer.mode.name
         app.lsp_on_type_formatting(scn['ch'].chr('UTF-8'))
         unless app.frame.view_win.sci_autoc_active
-          app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
+        # app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
           app.lsp_send_completion_request(scn)
         end
       end
@@ -127,7 +44,6 @@ module Mrbmacs
       appl.add_sci_event(Scintilla::SCN_DWELLSTART) do |app, scn|
         lang = app.current_buffer.mode.name
         if app.lsp_is_running?
-          _line, _col = app.line_col_from_pos(scn['pos'])
           td = LSP::Parameter::TextDocumentIdentifier.new(app.current_buffer.filename)
           param = { 'textDocument' => td, 'position' => app.lsp_position(scn['pos']) }
           app.ext.data['lsp'][lang].hover(param)
@@ -135,16 +51,15 @@ module Mrbmacs
       end
 
       appl.add_sci_event(Scintilla::SCN_USERLISTSELECTION) do |app, scn|
-        if scn['list_type'] == LSP_GOTO_LIST_TYPE
+        case scn['list_type']
+        when LSP_COMPLETION_LIST_TYPE
+          app.lsp_completion_select(scn)
+        when LSP_GOTO_LIST_TYPE
           target_file, lines, col = scn['text'].split(',')
           app.find_file(target_file) if app.current_buffer.filename != target_file
           app.frame.view_win.sci_gotopos(app.frame.view_win.sci_find_column(lines.to_i - 1, col.to_i - 1))
           app.recenter
         end
-      end
-
-      appl.add_sci_event(Scintilla::SCN_AUTOCSELECTIONCHANGE) do |app, scn|
-        # $stderr.puts "listType = #{scn['list_type']}, text = #{scn['text']}, position = #{scn['position']}"
       end
     end
 
@@ -156,30 +71,15 @@ module Mrbmacs
         mode.keymap[k] = v
       end
     end
-
-    def self.get_diagnostic_severity_to_s(severity)
-      case severity
-      when 1
-        'Error'
-      when 2
-        'Warning'
-      when 3
-        'Information'
-      when 4
-        'Hint'
-      else
-        'Unknwon'
-      end
-    end
   end
 
   # Application
   class Application
     def lsp_init
-      @lsp_completion_items = {}
+      @lsp_completion_items = []
       @config.use_builtin_completion = false
       @ext.data['lsp'] = {}
-      config = Mrbmacs::LspExtension::LSP_DEFAULT_CONFIG
+      config = Mrbmacs::LspExtension::LSP_DEFAULT_CONFIG.dup
       config.merge! @config.ext['lsp'] unless @config.ext['lsp'].nil?
       config = lsp_installed_servers.merge config
       config.each do |l, v|
@@ -188,6 +88,33 @@ module Mrbmacs
         Mrbmacs::LspExtension.set_keybind(appl, l)
         # end
       end
+    end
+
+    def lsp_find_file(filename)
+      lang = @current_buffer.mode.name
+      return unless lsp_find_server(lang)
+
+      lsp_start_server(lang, filename)
+      lsp_did_open(filename)
+    end
+
+    def lsp_did_open(filename)
+      lang = @current_buffer.mode.name
+      if @ext.data['lsp'][lang].status == :running
+        @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
+      end
+      @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])
+    end
+
+    def lsp_did_save(filename)
+      return unless lsp_is_running?
+
+      lang = @current_buffer.mode.name
+      @ext.data['lsp'][lang].didSave(
+        {
+          'textDocument' => LSP::Parameter::TextDocumentIdentifier.new(filename)
+        }
+      )
     end
 
     def lsp_is_running?
@@ -242,7 +169,11 @@ module Mrbmacs
         if headers == {}
           @logger.error "server(#{v.server[:command]}) is not running"
           v.status = :not_found
-          del_io_read_event(v.io)
+          # del_io_read_event(v.io)
+          next
+        end
+        if resp == nil
+          @logger.error '[lsp] error'
           next
         end
         @logger.debug resp.to_s
@@ -262,43 +193,25 @@ module Mrbmacs
       # end
     end
 
-    def lsp_get_style_from_severity(severity)
-      case severity
-      when 1
-        @theme.annotation_style(:error)
-      when 2
-        @theme.annotation_style(:warn)
-      when 3
-        @theme.annotation_style(:info)
-      when 4
-        @theme.annotation_style(:info)
-      else
-        @theme.annotation_style(:other)
-      end
-    end
-
-    def lsp_show_annotation(diagnostics)
-      @frame.view_win.sci_annotation_clearall
-      diagnostics.each do |d|
-        line = d['range']['start']['line']
-        col = d['range']['start']['character'] + 1
-        severity_str = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity'])
-        message = "#{severity_str}:#{d['message'].gsub(/\n\n/, "\n")}"
-        # margin(6+2) + scrollbar
-        max_len = @frame.edit_win.width - 11 - @frame.view_win.sci_get_line_indentation(line)
-        message.insert(max_len, "\n#{' ' * (severity_str.length + 1)}") if message.length > max_len
-        style = lsp_get_style_from_severity(d['severity'])
-        if @frame.view_win.sci_annotation_get_lines(line) > 0
-          message = "#{@frame.view_win.sci_annotation_get_text(line)}\n#{message}"
-          style = @frame.view_win.sci_annotation_get_style(line)
-        end
-        @frame.show_annotation(line + 1, col, message, style)
-      end
-      @frame.view_win.sci_scrollcaret
-    end
-
     def lsp_additional_info(lsp_client)
       "#{File.basename(lsp_client.server[:command])}:#{lsp_client.status.to_s[0]}"
+    end
+
+    def lsp_edit_buffer(text_edit)
+      sci_begin_undo_action
+      last_pos = nil
+      # text_edit.reverse_each do |e|
+      text_edit.each do |e|
+        @logger.debug e
+        @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
+                                                                   e['range']['start']['character']),
+                                    @frame.view_win.sci_findcolumn(e['range']['end']['line'],
+                                                                   e['range']['end']['character']))
+        sci_replace_sel('', e['newText'])
+        last_pos = @frame.view_win.sci_get_current_pos if last_pos.nil?
+      end
+      # @frame.view_win.sci_goto_pos(last_pos) unless last_pos.nil?
+      sci_end_undo_action
     end
 
     def lsp_start_server(lang, filename)
@@ -306,15 +219,8 @@ module Mrbmacs
         @ext.data['lsp'][lang].start_server(
           {
             'rootUri' => "file://#{@current_buffer.directory}",
-            'capabilities' => {
-              'workspace' => {},
-              'textDocument' => {
-                'onTypeFormatting' => {
-                  'dynamicRegistration' => true
-                }
-              },
-              'trace' => 'verbose'
-            }
+            'capabilities' => Mrbmacs::LspExtension.client_capabilities,
+            'trace' => 'verbose'
           }
         )
         unless @ext.data['lsp'][lang].io.nil?
@@ -323,10 +229,6 @@ module Mrbmacs
           end
         end
       end
-      if @ext.data['lsp'][lang].status == :running
-        @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
-      end
-      @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])
     end
   end
 end

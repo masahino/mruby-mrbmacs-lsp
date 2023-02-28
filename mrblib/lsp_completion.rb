@@ -35,6 +35,44 @@ module Mrbmacs
       end
     end
 
+    def lsp_completion_text(text)
+      current_pos = @frame.view_win.sci_get_current_pos
+      start_pos = @frame.view_win.sci_word_start_position(current_pos, true)
+      return if start_pos > current_pos
+
+      @frame.view_win.sci_set_sel(start_pos, current_pos)
+      @frame.view_win.sci_replace_sel('', text)
+    end
+
+    def lsp_completion_select(scn)
+      @lsp_completion_items.each do |item|
+        next unless item['label'] == scn['text']
+
+        # textEdit -> insertText -> label
+        if !item['textEdit'].nil?
+          lsp_completion_text(item['textEdit']['newText'])
+          unless item['additionalTextEdits'].nil?
+            lsp_edit_buffer(item['additionalTextEdits'])
+          end
+        elsif !item['insertText'].nil?
+          lsp_completion_text(item['insertText'])
+        else
+          lsp_completion_text(item['label'])
+        end
+        break
+      end
+      @frame.view_win.sci_autoc_cancel
+      @lsp_completion_items = []
+    end
+
+    def lsp_completion_list(req)
+      candidates = []
+      @lsp_completion_items.sort { |a, b| a['sortText'] <=> b['sortText'] }.each do |item|
+        candidates.push item['label']
+      end
+      candidates.join(@frame.view_win.sci_autoc_get_separator.chr)
+    end
+
     def lsp_get_completion_list(req, res)
       @logger.info res
       _line, col = current_line_col
@@ -71,7 +109,7 @@ module Mrbmacs
         candidates = []
       end
       @logger.debug candidates.to_s
-      [input.length, candidates.sort.uniq.join(' ')]
+      [input.length, candidates.sort.uniq.join(@frame.view_win.sci_autoc_get_separator.chr)]
     end
   end
 end

@@ -134,6 +134,11 @@ module Mrbmacs
         'command' => 'rls',
         'options' => {},
         'requires' => []
+      },
+      {
+        'command' => 'rust-analyzer',
+        'options' => {},
+        'requires' => []
       }
     ],
     'latex' => [

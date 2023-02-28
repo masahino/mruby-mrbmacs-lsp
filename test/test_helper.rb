@@ -137,6 +137,10 @@ module Scintilla
     def sci_get_curline
       []
     end
+
+    def sci_autoc_get_separator
+      ' '
+    end
   end
 end
 

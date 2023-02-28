@@ -22,7 +22,6 @@ module Mrbmacs
     end
 
     def lsp_formatting
-      @logger.debug 'lsp_formatting'
       return unless lsp_is_running?
 
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
@@ -36,10 +35,8 @@ module Mrbmacs
     end
 
     def lsp_range_formatting
-      @logger.debug 'lsp_range_formatting'
       return unless lsp_is_running?
 
-      @logger.debug 'lsp_range_formatting go'
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
       param = {
         'textDocument' => td,
@@ -57,7 +54,6 @@ module Mrbmacs
     end
 
     def lsp_rename
-      @logger.debug 'lsp_rename'
       return unless lsp_is_running?
 
       current_pos = @frame.view_win.sci_get_current_pos
@@ -136,21 +132,5 @@ module Mrbmacs
       end
     end
 
-    def lsp_edit_buffer(text_edit)
-      sci_begin_undo_action
-      last_pos = nil
-      # text_edit.reverse_each do |e|
-      text_edit.each do |e|
-        @logger.debug e
-        @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
-                                                                   e['range']['start']['character']),
-                                    @frame.view_win.sci_findcolumn(e['range']['end']['line'],
-                                                                   e['range']['end']['character']))
-        sci_replace_sel('', e['newText'])
-        last_pos = @frame.view_win.sci_get_current_pos if last_pos.nil?
-      end
-      # @frame.view_win.sci_goto_pos(last_pos) unless last_pos.nil?
-      sci_end_undo_action
-    end
   end
 end

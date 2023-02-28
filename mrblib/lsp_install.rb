@@ -97,7 +97,7 @@ module Mrbmacs
       server_list = lsp_server_list_with_lang(lang)
       @frame.echo_gets('server: ') do |input_text|
         comp_list = server_list.filter { |s| s.start_with? input_text }
-        [comp_list.join(' '), input_text.length]
+        [comp_list.join(@frame.echo_win.sci_autoc_get_separator.chr), input_text.length]
       end
     end
 
@@ -110,7 +110,7 @@ module Mrbmacs
              end
       @frame.echo_gets('language: ', lang) do |input_text|
         comp_list = lsp_lang_list.filter { |l| l.start_with? input_text }
-        [comp_list.join(' '), input_text.length]
+        [comp_list.join(@frame.echo_win.sci_autoc_get_separator.chr), input_text.length]
       end
     end
 

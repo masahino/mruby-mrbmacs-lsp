@@ -7,6 +7,9 @@ module Mrbmacs
 
     def lsp_response_initialize(lsp_server, _id, resp)
       lsp_server.initialized(resp)
+      unless lsp_server.server_capabilities['documentOnTypeFormattingProvider'].nil?
+        @current_buffer.mode.use_builtin_formatting = false
+      end
       lsp_server.didOpen(
         { 'textDocument' => LSP::Parameter::TextDocumentItem.new(@current_buffer.filename) }
       )
@@ -19,23 +22,40 @@ module Mrbmacs
 
       @logger.debug lsp_server.request_buffer[id].to_s
       @logger.debug JSON.pretty_generate resp
-      len, candidates = lsp_get_completion_list(lsp_server.request_buffer[id][:message]['params'], resp)
-      @frame.view_win.sci_autoc_show(len, candidates) unless candidates.empty?
+      @lsp_completion_items = if resp['result'].is_a?(Hash) && resp['result'].key?('items')
+                                resp['result']['items']
+                              elsif resp['result'].is_a?(Array)
+                                resp['result']
+                              end
+
+      unless @lsp_completion_items.nil?
+        candidates = lsp_completion_list(lsp_server.request_buffer[id][:message]['params'])
+        # @frame.view_win.sci_autoc_show(len, candidates) unless candidates.empty?
+        @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates) unless candidates.empty?
+      end
     end
 
     def lsp_response_text_document_hover(_lsp_server, _id, resp)
       return if @frame.view_win.sci_autoc_active
-      return if resp['result'].nil? || resp['result']['contents']['value'].nil?
+      return if resp['result'].nil? || resp['result']['contents'].nil?
 
-      # markup_kind = resp['result']['contents']['kind']
-      value = resp['result']['contents']['value']
-      @frame.view_win.sci_calltip_show(@frame.view_win.sci_get_current_pos, value) unless value.empty?
+      contents = if resp['result']['contents'].is_a?(Array)
+                   resp['result']['contents'][0]
+                 else
+                   resp['result']['contents']
+                 end
+      str = if contents.is_a?(Hash)
+              contents['value']
+            else
+              contents
+            end
+      @frame.view_win.sci_calltip_show(@frame.view_win.sci_get_current_pos, str) unless str.empty?
     end
 
     def lsp_response_text_document_signature_help(_lsp_server, _id, resp)
-      @logger.debug resp['result']['signatures'].to_s
-      return if resp['result'].nil? | resp['result']['signatures'].nil?
+      return if resp['result'].nil? || resp['result']['signatures'].nil?
 
+      @logger.debug resp['result']['signatures'].to_s
       list = resp['result']['signatures'].map { |s| s['label'] }.uniq
       @logger.debug list.to_s
       @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n")) unless list.empty?
@@ -48,7 +68,7 @@ module Mrbmacs
       end
       message "[lsp] receive \"#{method}\" response(#{list.size})"
       @logger.debug list
-      @frame.view_win.sci_userlist_show(LspExtension::LSP_GOTO_LIST_TYPE, list.join(' ')) unless list.empty?
+      @frame.view_win.sci_userlist_show(LspExtension::LSP_GOTO_LIST_TYPE, list.join(@frame.view_win.sci_autoc_get_separator.chr)) unless list.empty?
     end
 
     def lsp_response_text_document_declaration(lsp_server, id, resp)
@@ -90,42 +110,24 @@ module Mrbmacs
       lsp_formatting_response(lsp_server, id, resp)
     end
 
-    def lsp_response_old(lsp_server, id, resp)
-      method = lsp_server.request_buffer[id][:message]['method']
-      @logger.info "[lsp] Handling response for method: #{method}"
-      case method
-      when 'initialize'
-        lsp_response_initialize(lsp_server, id, resp)
-      when 'textDocument/completion'
-        lsp_response_text_document_completion(lsp_server, id, resp)
-      when 'textDocument/hover'
-        lsp_response_text_document_hover(lsp_server, id, resp)
-      when 'textDocument/signatureHelp'
-        lsp_response_text_document_signature_help(lsp_server, id, resp)
-      when 'textDocument/declaration', 'textDocument/definition', 'textDocument/typeDefinition',
-        'textDocument/implementation', 'textDocument/references'
-        lsp_goto_response(lsp_server, id, resp)
-      when 'textDocument/formatting', 'textDocument/rangeFormatting', 'textDocument/onTypeFormatting'
-        lsp_formatting_response(lsp_server, id, resp)
-      when 'textDocument/rename'
-        lsp_response_text_document_rename(lsp_server, id, resp)
-      else
-        @logger.info "Unknown method in response: #{method}"
-        @logger.debug "Response: #{resp}"
-      end
-      lsp_server.request_buffer.delete(id)
+    def lsp_response_error(_lsp_server, _id, resp)
+      error_type = LSP::ERROR_CODES.key(resp['error']['code'])
+      message "[#{error_type}]#{resp['error']['message']}"
     end
 
     def lsp_response(lsp_server, id, resp)
-      method = lsp_server.request_buffer[id][:message]['method']
-      @logger.info "[lsp] Handling response for method: #{method}"
-
-      handler = "lsp_response_#{to_underscore(method.tr('/', '_'))}"
-      if respond_to?(handler, true)
-        send(handler, lsp_server, id, resp)
+      if resp['error'].nil?
+        method = lsp_server.request_buffer[id][:message]['method']
+        @logger.info "[lsp] Handling response for method: #{method}"
+        handler = "lsp_response_#{to_underscore(method.tr('/', '_'))}"
+        if respond_to?(handler, true)
+          send(handler, lsp_server, id, resp)
+        else
+          @logger.info "Unknown method in response: #{method}"
+          @logger.debug "Response: #{resp}"
+        end
       else
-        @logger.info "Unknown method in response: #{method}"
-        @logger.debug "Response: #{resp}"
+        lsp_response_error(lsp_server, id, resp) unless resp['error'].nil?
       end
       lsp_server.request_buffer.delete(id)
     end
