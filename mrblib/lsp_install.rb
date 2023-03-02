@@ -57,14 +57,9 @@ module Mrbmacs
 
     def lsp_installer_dir
       # check vim-lsp-settings/installer
-      homedir =
-        if !ENV['HOME'].nil?
-          ENV['HOME']
-        elsif !ENV['HOMEDRIVE'].nil?
-          ENV['HOMEDRIVE'] + ENV['HOMEPATH']
-        else
-          return nil
-        end
+      homedir = Mrbmacs.homedir
+      return if homedir == ''
+
       installer_dir = "#{homedir}/.vim/plugged/vim-lsp-settings/installer"
       return installer_dir if Dir.exist?(installer_dir)
     end
