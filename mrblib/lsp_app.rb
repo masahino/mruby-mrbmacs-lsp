@@ -21,15 +21,14 @@ module Mrbmacs
       text_document_sync = lsp_server_text_document_sync_kind(@ext.data['lsp'][lang])
 
       case text_document_sync
-      when LSP::TextDocumentSyncKind::FULL
+      when LSP::TextDocumentSyncKind[:Full]
         cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(@frame.view_win.sci_get_text(@frame.view_win.sci_get_length + 1))]
-      when LSP::TextDocumentSyncKind::INCREMENTAL
+      when LSP::TextDocumentSyncKind[:Incremental]
         cc = lsp_content_change_event_from_scn(scn)
       else
         # None
         return
       end
-
       param = { 'textDocument' => td, 'contentChanges' => cc }
       @ext.data['lsp'][lang].didChange(param)
     end

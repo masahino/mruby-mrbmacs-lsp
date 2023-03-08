@@ -111,7 +111,7 @@ module Mrbmacs
     end
 
     def lsp_response_error(_lsp_server, _id, resp)
-      error_type = LSP::ERROR_CODES.key(resp['error']['code'])
+      error_type = LSP::ErrorCodes.key(resp['error']['code'])
       message "[#{error_type}]#{resp['error']['message']}"
     end
 
@@ -124,7 +124,7 @@ module Mrbmacs
           send(handler, lsp_server, id, resp)
         else
           @logger.info "Unknown method in response: #{method}"
-          @logger.debug "Response: #{resp}"
+          @logger.info "Response: #{resp}"
         end
       else
         lsp_response_error(lsp_server, id, resp) unless resp['error'].nil?

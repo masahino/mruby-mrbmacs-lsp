@@ -18,19 +18,18 @@ module Mrbmacs
           { 'textDocument' => td, 'position' => lsp_position }
         )
       else
-        if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-          trigger_kind = LSP::CompletionTriggerKind::TRIGGER_CHARACTER # 2
-          trigger_char = scn['ch'].chr('UTF-8')
-        else
-          trigger_kind = LSP::CompletionTriggerKind::INVOKED # 1
-          trigger_char = ''
-        end
         param = {
           'textDocument' => td,
-          'position' => lsp_position,
-          'context' => { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
+          'position' => lsp_position
         }
-        @logger.debug param.to_s
+        if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
+          trigger_kind = LSP::CompletionTriggerKind[:TriggerCharacter] # 2
+          trigger_char = scn['ch'].chr('UTF-8')
+          param['context'] = { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
+        else
+          trigger_kind = LSP::CompletionTriggerKind[:Invoked] # 1
+          param['context'] = { 'triggerKind' => trigger_kind }
+        end
         @ext.data['lsp'][lang].completion(param)
       end
     end

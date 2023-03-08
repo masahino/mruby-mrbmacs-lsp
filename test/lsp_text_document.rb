@@ -63,7 +63,7 @@ end
 assert('lsp_content_change_event_from_scn: enter key') do
   app = setup_app
   app.find_file("#{File.dirname(__FILE__)}#{File::SEPARATOR}content_change_event.txt")
-  # enter 
+  # enter
   scn = { 'position' => 22, 'length' => 1, 'lines_added' => 1, 'modification_type' => 0x2011, 'text' => "\n" }
   cc = {
     'text' => "\n",

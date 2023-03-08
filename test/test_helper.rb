@@ -39,6 +39,7 @@ module Mrbmacs
 
     def find_file(file)
       @text = File.open(file).read
+      @frame.view_win.text = @text
     end
 
     def line_col_from_pos(pos)
@@ -99,12 +100,13 @@ module Scintilla
   Scintilla::PLATFORM = :TEST
   # TestScintilla
   class TestScintilla < ScintillaBase
-    attr_accessor :pos, :messages, :test_return
+    attr_accessor :pos, :messages, :test_return, :text
 
     def initialize
       @pos = 0
       @messages = []
       @test_return = {}
+      @text = ''
     end
 
     def send_message(id, *_args)
@@ -140,6 +142,25 @@ module Scintilla
 
     def sci_autoc_get_separator
       ' '
+    end
+
+    def sci_line_from_position(pos)
+      line = @text[0..pos].count("\n")
+      line -= 1 if @text[0..pos] != @text && @text[0..pos][-1] == "\n"
+      line
+    end
+
+    def sci_position_from_line(line)
+      return 0 if line == 0
+      line -= 1
+      tmp_text = @text.split("\n")[0..line].join("\n")
+      tmp_text.bytesize + 1
+    end
+
+    def sci_get_textrange(start_pos, end_pos)
+      return '' if start_pos == end_pos
+
+      @text[start_pos..end_pos - 1]
     end
   end
 end

@@ -1,34 +1,40 @@
 module Mrbmacs
   # TextDocument ContentChangeEvent
   class Application
-    def lsp_deleted_pos_from_scn(scn)
-      start_line, start_char = line_col_from_pos(scn['position'])
+    def lsp_line_char_from_pos(pos)
+      line = @frame.view_win.sci_line_from_position(pos)
+      line_start_pos = @frame.view_win.sci_position_from_line(line)
+      tmp_text = @frame.view_win.sci_get_textrange(line_start_pos, pos)
+      [line, tmp_text.length]
+    end
+
+    def lsp_delete_range_from_scn(scn)
+      start_line, start_char = lsp_line_char_from_pos(scn['position'])
       end_line = start_line - scn['lines_added']
       if scn['lines_added'] == 0
         end_char = start_char + scn['length']
+      elsif scn['text'][-1] == "\n"
+        end_char = 0
       else
-        if scn['text'][-1] == "\n"
-          end_char = 0
-        else
-          end_char = scn['text'].split("\n").last.length
-        end
+        end_char = scn['text'].split("\n").last.length
       end
-    # end_char += 1 if scn['text'][-1] == "\n"
-      [end_line, end_char]
+      LSP::Parameter::Range.new(start_line, start_char, end_line, end_char)
+    end
+
+    def lsp_insert_range_from_scn(scn)
+      line, char = lsp_line_char_from_pos(scn['position'])
+      LSP::Parameter::Range.new(line, char, line, char)
     end
 
     def lsp_content_change_event_from_scn(scn)
-      start_line, start_char = line_col_from_pos(scn['position'])
       case scn['modification_type'] & 0x0f
-      when 0x01
-        end_line = start_line
-        end_char = start_char
+      when Scintilla::SC_MOD_INSERTTEXT
+        range = lsp_insert_range_from_scn(scn)
         text = scn['text']
-      when 0x02
-        end_line, end_char = lsp_deleted_pos_from_scn(scn)
+      when Scintilla::SC_MOD_DELETETEXT
+        range = lsp_delete_range_from_scn(scn)
         text = ''
       end
-      range = LSP::Parameter::Range.new(start_line, start_char, end_line, end_char)
       [LSP::Parameter::TextDocumentContentChangeEvent.new(text, range)]
     end
   end
