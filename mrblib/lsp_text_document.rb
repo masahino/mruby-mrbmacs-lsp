@@ -35,7 +35,7 @@ module Mrbmacs
         range = lsp_delete_range_from_scn(scn)
         text = ''
       end
-      [LSP::Parameter::TextDocumentContentChangeEvent.new(text, range)]
+      [LSP::Parameter::TextDocumentContentChangeEvent.new(text[0, scn['length']], range)]
     end
   end
 end
