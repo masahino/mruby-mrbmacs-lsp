@@ -38,7 +38,8 @@ module Mrbmacs
       appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
         next unless app.lsp_is_running?
 
-        app.lsp_did_change(scn)
+        app.lsp_did_change_for_scn(scn)
+        app.lsp_additional_edit
       end
 
       appl.add_sci_event(Scintilla::SCN_DWELLSTART) do |app, scn|
@@ -77,6 +78,7 @@ module Mrbmacs
   class Application
     def lsp_init
       @lsp_completion_items = []
+      @lsp_text_edits = []
       @config.use_builtin_completion = false
       @ext.data['lsp'] = {}
       config = Mrbmacs::LspExtension::LSP_DEFAULT_CONFIG.dup
@@ -96,25 +98,6 @@ module Mrbmacs
 
       lsp_start_server(lang, filename)
       lsp_did_open(filename)
-    end
-
-    def lsp_did_open(filename)
-      lang = @current_buffer.mode.name
-      if @ext.data['lsp'][lang].status == :running
-        @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
-      end
-      @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])
-    end
-
-    def lsp_did_save(filename)
-      return unless lsp_is_running?
-
-      lang = @current_buffer.mode.name
-      @ext.data['lsp'][lang].didSave(
-        {
-          'textDocument' => LSP::Parameter::TextDocumentIdentifier.new(filename)
-        }
-      )
     end
 
     def lsp_is_running?
@@ -195,23 +178,6 @@ module Mrbmacs
 
     def lsp_additional_info(lsp_client)
       "#{File.basename(lsp_client.server[:command])}:#{lsp_client.status.to_s[0]}"
-    end
-
-    def lsp_edit_buffer(text_edit)
-      sci_begin_undo_action
-      last_pos = nil
-      # text_edit.reverse_each do |e|
-      text_edit.each do |e|
-        @logger.debug e
-        @frame.view_win.sci_set_sel(@frame.view_win.sci_findcolumn(e['range']['start']['line'],
-                                                                   e['range']['start']['character']),
-                                    @frame.view_win.sci_findcolumn(e['range']['end']['line'],
-                                                                   e['range']['end']['character']))
-        sci_replace_sel('', e['newText'])
-        last_pos = @frame.view_win.sci_get_current_pos if last_pos.nil?
-      end
-      # @frame.view_win.sci_goto_pos(last_pos) unless last_pos.nil?
-      sci_end_undo_action
     end
 
     def lsp_start_server(lang, filename)

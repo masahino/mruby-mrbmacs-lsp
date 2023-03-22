@@ -37,5 +37,57 @@ module Mrbmacs
       end
       [LSP::Parameter::TextDocumentContentChangeEvent.new(text[0, scn['length']], range)]
     end
+
+    def lsp_server_text_document_sync_kind(server)
+      return 0 if server.server_capabilities['textDocumentSync'].nil?
+
+      return server.server_capabilities['textDocumentSync'] if server.server_capabilities['textDocumentSync'].is_a?(Integer)
+
+      if !server.server_capabilities['textDocumentSync']['change'].nil?
+        return server.server_capabilities['textDocumentSync']['change']
+      end
+      0
+    end
+
+    def lsp_did_change_for_content_change(content_change)
+      lang = @current_buffer.mode.name
+      td = LSP::Parameter::VersionedTextDocumentIdentifier.new(@current_buffer.filename, 0)
+      text_document_sync = lsp_server_text_document_sync_kind(@ext.data['lsp'][lang])
+
+      case text_document_sync
+      when LSP::TextDocumentSyncKind[:Full]
+        cc = [LSP::Parameter::TextDocumentContentChangeEvent.new(@frame.view_win.sci_get_text(@frame.view_win.sci_get_length + 1))]
+      when LSP::TextDocumentSyncKind[:Incremental]
+        cc = content_change
+      else
+        # None
+        return
+      end
+      param = { 'textDocument' => td, 'contentChanges' => cc }
+      @ext.data['lsp'][lang].didChange(param)
+    end
+
+    def lsp_did_change_for_scn(scn)
+      lsp_did_change_for_content_change(lsp_content_change_event_from_scn(scn))
+    end
+
+    def lsp_did_open(filename)
+      lang = @current_buffer.mode.name
+      if @ext.data['lsp'][lang].status == :running
+        @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
+      end
+      @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])
+    end
+
+    def lsp_did_save(filename)
+      return unless lsp_is_running?
+
+      lang = @current_buffer.mode.name
+      @ext.data['lsp'][lang].didSave(
+        {
+          'textDocument' => LSP::Parameter::TextDocumentIdentifier.new(filename)
+        }
+      )
+    end
   end
 end

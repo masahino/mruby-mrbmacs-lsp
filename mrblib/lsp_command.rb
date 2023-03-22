@@ -1,6 +1,20 @@
 module Mrbmacs
   # LSP commands
   module Command
+    def lsp_code_lens
+      return unless lsp_is_running?
+
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      @ext.data['lsp'][@current_buffer.mode.name].codeLens({ 'textDocument' => td })
+    end
+
+    def lsp_document_symbol
+      return unless lsp_is_running?
+
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      @ext.data['lsp'][@current_buffer.mode.name].documentSymbol({ 'textDocument' => td })
+    end
+
     def lsp_declaration
       lsp_goto_command('declaration', 'declarationProvider')
     end
@@ -131,6 +145,5 @@ module Mrbmacs
         message '[lsp] server is not running'
       end
     end
-
   end
 end

@@ -8,7 +8,7 @@ module Mrbmacs
       @logger.info "[lsp] receive \"#{method}\""
       @logger.info resp
       if !resp.nil? && resp.key?('result') && !resp['result'].nil?
-        lsp_edit_buffer(resp['result'])
+        lsp_process_text_edits(resp['result'])
       elsif resp.key?('error')
         message resp['error']['message']
       end

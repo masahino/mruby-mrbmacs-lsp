@@ -94,7 +94,7 @@ module Mrbmacs
     def lsp_response_text_document_rename(_lsp_server, _id, resp)
       @logger.debug resp
       if resp.key?('result') && resp['result']['changes'].key?("file://#{@current_buffer.filename}")
-        lsp_edit_buffer(resp['result']['changes']["file://#{@current_buffer.filename}"])
+        lsp_process_text_edits(resp['result']['changes']["file://#{@current_buffer.filename}"])
       end
     end
 

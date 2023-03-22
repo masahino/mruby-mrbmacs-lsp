@@ -41,30 +41,40 @@ module Mrbmacs
 
       @frame.view_win.sci_set_sel(start_pos, current_pos)
       @frame.view_win.sci_replace_sel('', text)
+      range = { 'start' => lsp_position(start_pos), 'end' => lsp_position(current_pos) }
+      lsp_did_change_for_content_change([{ 'range' => range, 'text' => text }])
     end
 
     def lsp_completion_select(scn)
-      @lsp_completion_items.each do |item|
-        next unless item['label'] == scn['text']
+      selected_item = @lsp_completion_items.find { |item| item['label'] == scn['text'] }
 
+      if selected_item
+        sci_begin_undo_action
+        mod_mask = @frame.view_win.sci_get_mod_event_mask
+        @frame.view_win.sci_set_mod_event_mask(0)
         # textEdit -> insertText -> label
-        if !item['textEdit'].nil?
-          lsp_completion_text(item['textEdit']['newText'])
-          unless item['additionalTextEdits'].nil?
-            lsp_edit_buffer(item['additionalTextEdits'])
-          end
-        elsif !item['insertText'].nil?
-          lsp_completion_text(item['insertText'])
+        if selected_item['textEdit']
+          lsp_completion_text(selected_item['textEdit']['newText'])
+        elsif item['insertText']
+          lsp_completion_text(selected_item['insertText'])
         else
-          lsp_completion_text(item['label'])
+          lsp_completion_text(selected_item['label'])
         end
-        break
+        if selected_item['additionalTextEdits']
+          selected_item['additionalTextEdits'].reverse_each do |e|
+            @logger.debug e
+            lsp_edit_buffer(e)
+            lsp_did_change_for_content_change([{ 'range' => e['range'], 'text' => e['newText'] }])
+          end
+        end
+        @frame.view_win.sci_set_mod_event_mask(mod_mask)
+        sci_end_undo_action
       end
       @frame.view_win.sci_autoc_cancel
       @lsp_completion_items = []
     end
 
-    def lsp_completion_list(req)
+    def lsp_completion_list(_req)
       candidates = []
       @lsp_completion_items.sort { |a, b| a['sortText'] <=> b['sortText'] }.each do |item|
         candidates.push item['label']

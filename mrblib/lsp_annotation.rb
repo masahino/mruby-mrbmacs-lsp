@@ -31,14 +31,17 @@ module Mrbmacs
     end
 
     def lsp_show_annotation(diagnostics)
+      @frame.view_win.sci_annotation_clearall
       return if @frame.view_win.sci_autoc_active || @frame.view_win.sci_calltip_active
 
-      @frame.view_win.sci_annotation_clearall
       diagnostics.each do |d|
         line = d['range']['start']['line']
         col = d['range']['start']['character'] + 1
         severity_str = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity'])
-        message = "#{severity_str}:#{d['message'].gsub(/\n\n/, "\n")}"
+        message = "#{severity_str}:"
+        message += "[#{d['source']}]" unless d['source'].nil?
+        message += "[#{d['code']}]" unless d['code'].nil?
+        message += " #{d['message'].gsub(/\n\n/, "\n")}"
         # margin(6+2) + scrollbar
         max_len = @frame.edit_win.width - 11 - @frame.view_win.sci_get_line_indentation(line)
         message.insert(max_len, "\n#{' ' * (severity_str.length + 1)}") if message.length > max_len
