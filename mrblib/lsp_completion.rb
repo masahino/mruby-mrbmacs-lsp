@@ -13,15 +13,13 @@ module Mrbmacs
       return if input.nil? || input.empty?
 
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      param = {
+        'textDocument' => td,
+        'position' => lsp_position
+      }
       if lsp_signature_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-        @ext.data['lsp'][lang].signatureHelp(
-          { 'textDocument' => td, 'position' => lsp_position }
-        )
+        @ext.data['lsp'][lang].signatureHelp(param)
       else
-        param = {
-          'textDocument' => td,
-          'position' => lsp_position
-        }
         if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
           trigger_kind = LSP::CompletionTriggerKind[:TriggerCharacter] # 2
           trigger_char = scn['ch'].chr('UTF-8')
@@ -46,7 +44,7 @@ module Mrbmacs
     end
 
     def lsp_completion_select(scn)
-      selected_item = @lsp_completion_items.find { |item| item['label'] == scn['text'] }
+      selected_item = @lsp_completion_items.find { |item| item['mylabel'] == scn['text'] }
 
       if selected_item
         sci_begin_undo_action
@@ -72,14 +70,6 @@ module Mrbmacs
       end
       @frame.view_win.sci_autoc_cancel
       @lsp_completion_items = []
-    end
-
-    def lsp_completion_list(_req)
-      candidates = []
-      @lsp_completion_items.sort { |a, b| a['sortText'] <=> b['sortText'] }.each do |item|
-        candidates.push item['label']
-      end
-      candidates.join(@frame.view_win.sci_autoc_get_separator.chr)
     end
 
     def lsp_get_completion_list(req, res)
@@ -119,6 +109,55 @@ module Mrbmacs
       end
       @logger.debug candidates.to_s
       [input.length, candidates.sort.uniq.join(@frame.view_win.sci_autoc_get_separator.chr)]
+    end
+
+    def lsp_completion_max_length(completion_items, key)
+      value_arr = completion_items.map { |h| h[key] }
+      value_arr.compact!
+      return 0 if value_arr.empty?
+
+      value_arr.max_by(&:length).length
+    end
+
+    def lsp_completion_list(_req)
+      candidates = []
+      max_label_length = lsp_completion_max_length(@lsp_completion_items, 'label')
+      max_detail_length = lsp_completion_max_length(@lsp_completion_items, 'detail')
+      @lsp_completion_items.sort { |a, b| a['sortText'] <=> b['sortText'] }.each do |item|
+        label = item['label'].ljust(max_label_length)
+        detail = if item['detail'].nil?
+                   ''.ljust(max_detail_length)
+                 else
+                   item['detail'].ljust(max_detail_length)
+                 end
+        label = "#{label} #{detail} [#{LSP::CompletionItemKind.key(item['kind'])}]"
+        candidates.push label
+        item['mylabel'] = label
+      end
+      candidates.join(@frame.view_win.sci_autoc_get_separator.chr)
+    end
+
+    def lsp_redraw_completion
+      selected_text = @frame.view_win.sci_autoc_get_current_text
+      @frame.view_win.sci_autoc_cancel
+      candidates = @lsp_completion_items.map { |h| h['mylabel'] }.join(@frame.view_win.sci_autoc_get_separator.chr)
+      @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates)
+      @frame.view_win.sci_autoc_select(selected_text)
+    end
+
+    def lsp_process_completion_response(lsp_server, id, resp)
+      @logger.debug lsp_server.request_buffer[id].to_s
+      @logger.debug JSON.pretty_generate resp
+      @lsp_completion_items = if resp['result'].is_a?(Hash) && resp['result'].key?('items')
+                                resp['result']['items']
+                              elsif resp['result'].is_a?(Array)
+                                resp['result']
+                              end
+
+      return if @lsp_completion_items.nil?
+
+      candidates = lsp_completion_list(lsp_server.request_buffer[id][:message]['params'])
+      @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates) unless candidates.empty?
     end
   end
 end

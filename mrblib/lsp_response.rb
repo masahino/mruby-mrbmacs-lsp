@@ -18,47 +18,20 @@ module Mrbmacs
     end
 
     def lsp_response_text_document_completion(lsp_server, id, resp)
-      return if @frame.view_win.sci_autoc_active || @frame.view_win.sci_calltip_active
-
-      @logger.debug lsp_server.request_buffer[id].to_s
-      @logger.debug JSON.pretty_generate resp
-      @lsp_completion_items = if resp['result'].is_a?(Hash) && resp['result'].key?('items')
-                                resp['result']['items']
-                              elsif resp['result'].is_a?(Array)
-                                resp['result']
-                              end
-
-      unless @lsp_completion_items.nil?
-        candidates = lsp_completion_list(lsp_server.request_buffer[id][:message]['params'])
-        # @frame.view_win.sci_autoc_show(len, candidates) unless candidates.empty?
-        @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates) unless candidates.empty?
-      end
+      lsp_process_completion_response(lsp_server, id, resp)
     end
 
     def lsp_response_text_document_hover(_lsp_server, _id, resp)
       return if @frame.view_win.sci_autoc_active
       return if resp['result'].nil? || resp['result']['contents'].nil?
 
-      contents = if resp['result']['contents'].is_a?(Array)
-                   resp['result']['contents'][0]
-                 else
-                   resp['result']['contents']
-                 end
-      str = if contents.is_a?(Hash)
-              contents['value']
-            else
-              contents
-            end
-      @frame.view_win.sci_calltip_show(@frame.view_win.sci_get_current_pos, str) unless str.empty?
+      lsp_process_hover_response(resp)
     end
 
     def lsp_response_text_document_signature_help(_lsp_server, _id, resp)
       return if resp['result'].nil? || resp['result']['signatures'].nil?
 
-      @logger.debug resp['result']['signatures'].to_s
-      list = resp['result']['signatures'].map { |s| s['label'] }.uniq
-      @logger.debug list.to_s
-      @frame.view_win.sci_calltipshow(@frame.view_win.sci_get_current_pos, list.join("\n")) unless list.empty?
+      lsp_process_signature_help_response(resp)
     end
 
     def lsp_goto_response(lsp_server, id, resp)

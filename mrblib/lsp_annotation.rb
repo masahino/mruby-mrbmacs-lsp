@@ -32,19 +32,19 @@ module Mrbmacs
 
     def lsp_show_annotation(diagnostics)
       @frame.view_win.sci_annotation_clearall
-      return if @frame.view_win.sci_autoc_active || @frame.view_win.sci_calltip_active
 
       diagnostics.each do |d|
         line = d['range']['start']['line']
         col = d['range']['start']['character'] + 1
-        severity_str = Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity'])
-        message = "#{severity_str}:"
+        severity_str = "#{Mrbmacs::LspExtension.get_diagnostic_severity_to_s(d['severity'])}:"
+        message = ''
         message += "[#{d['source']}]" unless d['source'].nil?
         message += "[#{d['code']}]" unless d['code'].nil?
-        message += " #{d['message'].gsub(/\n\n/, "\n")}"
+        message += d['message'].gsub(/\n\n/, "\n")
         # margin(6+2) + scrollbar
-        max_len = @frame.edit_win.width - 11 - @frame.view_win.sci_get_line_indentation(line)
-        message.insert(max_len, "\n#{' ' * (severity_str.length + 1)}") if message.length > max_len
+        max_len = @frame.edit_win.width - 11 - @frame.view_win.sci_get_line_indentation(line) - severity_str.length
+        message = message.chars.each_slice(max_len).map(&:join).join("\n#{' ' * severity_str.length}")
+        message.prepend(severity_str)
         style = lsp_get_style_from_severity(d['severity'])
         if @frame.view_win.sci_annotation_get_lines(line) > 0
           message = "#{@frame.view_win.sci_annotation_get_text(line)}\n#{message}"
@@ -53,6 +53,8 @@ module Mrbmacs
         @frame.show_annotation(line + 1, col, message, style)
       end
       @frame.view_win.sci_scrollcaret
+      lsp_redraw_calltip if @frame.view_win.sci_calltip_active
+      lsp_redraw_completion if @frame.view_win.sci_autoc_active
     end
   end
 end

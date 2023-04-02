@@ -16,39 +16,28 @@ module Mrbmacs
       end
 
       appl.add_command_event(:before_save_buffers_kill_terminal) do |app|
-        app.ext.data['lsp'].each do |_lang, client|
-          if client.status != :stop && client.status != :not_found
-            client.shutdown
-            client.stop_server
-          end
-        end
+        app.lsp_shutdown
       end
 
       appl.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
         next unless app.lsp_is_running?
 
-        lang = app.current_buffer.mode.name
         app.lsp_on_type_formatting(scn['ch'].chr('UTF-8'))
-        unless app.frame.view_win.sci_autoc_active
-        # app.ext.data['lsp'][lang].cancel_request_with_method('textDocument/completion')
-          app.lsp_send_completion_request(scn)
-        end
+        app.lsp_send_completion_request(scn) unless app.frame.view_win.sci_autoc_active
       end
 
       appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
         next unless app.lsp_is_running?
 
         app.lsp_did_change_for_scn(scn)
-        app.lsp_additional_edit
       end
 
       appl.add_sci_event(Scintilla::SCN_DWELLSTART) do |app, scn|
-        lang = app.current_buffer.mode.name
-        if app.lsp_is_running?
-          td = LSP::Parameter::TextDocumentIdentifier.new(app.current_buffer.filename)
-          param = { 'textDocument' => td, 'position' => app.lsp_position(scn['pos']) }
-          app.ext.data['lsp'][lang].hover(param)
-        end
+        next unless app.lsp_is_running?
+
+        td = LSP::Parameter::TextDocumentIdentifier.new(app.current_buffer.filename)
+        param = { 'textDocument' => td, 'position' => app.lsp_position(scn['pos']) }
+        app.ext.data['lsp'][lang].hover(param)
       end
 
       appl.add_sci_event(Scintilla::SCN_USERLISTSELECTION) do |app, scn|
@@ -60,6 +49,15 @@ module Mrbmacs
           app.find_file(target_file) if app.current_buffer.filename != target_file
           app.frame.view_win.sci_gotopos(app.frame.view_win.sci_find_column(lines.to_i - 1, col.to_i - 1))
           app.recenter
+        end
+      end
+
+      appl.add_sci_event(Scintilla::SCN_CALLTIPCLICK) do |app, scn|
+        case scn['position']
+        when 1
+          app.lsp_pageup_calltip
+        when 2
+          app.lsp_pagedown_calltip
         end
       end
     end
@@ -78,7 +76,7 @@ module Mrbmacs
   class Application
     def lsp_init
       @lsp_completion_items = []
-      @lsp_text_edits = []
+      @lsp_calltip_info = { text: '', start_line: 0 }
       @config.use_builtin_completion = false
       @ext.data['lsp'] = {}
       config = Mrbmacs::LspExtension::LSP_DEFAULT_CONFIG.dup
@@ -193,6 +191,15 @@ module Mrbmacs
           add_io_read_event(@ext.data['lsp'][lang].io) do |iapp, io|
             iapp.lsp_read_message(io)
           end
+        end
+      end
+    end
+
+    def lsp_shutdown
+      @ext.data['lsp'].each do |_lang, client|
+        if client.status != :stop && client.status != :not_found
+          client.shutdown
+          client.stop_server
         end
       end
     end
