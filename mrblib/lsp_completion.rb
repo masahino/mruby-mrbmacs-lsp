@@ -17,19 +17,15 @@ module Mrbmacs
         'textDocument' => td,
         'position' => lsp_position
       }
-      if lsp_signature_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-        @ext.data['lsp'][lang].signatureHelp(param)
+      if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
+        trigger_kind = LSP::CompletionTriggerKind[:TriggerCharacter] # 2
+        trigger_char = scn['ch'].chr('UTF-8')
+        param['context'] = { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
       else
-        if lsp_completion_trigger_characters.include?(scn['ch'].chr('UTF-8'))
-          trigger_kind = LSP::CompletionTriggerKind[:TriggerCharacter] # 2
-          trigger_char = scn['ch'].chr('UTF-8')
-          param['context'] = { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
-        else
-          trigger_kind = LSP::CompletionTriggerKind[:Invoked] # 1
-          param['context'] = { 'triggerKind' => trigger_kind }
-        end
-        @ext.data['lsp'][lang].completion(param)
+        trigger_kind = LSP::CompletionTriggerKind[:Invoked] # 1
+        param['context'] = { 'triggerKind' => trigger_kind }
       end
+      @ext.data['lsp'][lang].completion(param)
     end
 
     def lsp_completion_text(text)
@@ -138,11 +134,9 @@ module Mrbmacs
     end
 
     def lsp_redraw_completion
-      selected_text = @frame.view_win.sci_autoc_get_current_text
       @frame.view_win.sci_autoc_cancel
       candidates = @lsp_completion_items.map { |h| h['mylabel'] }.join(@frame.view_win.sci_autoc_get_separator.chr)
       @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates)
-      @frame.view_win.sci_autoc_select(selected_text)
     end
 
     def lsp_process_completion_response(lsp_server, id, resp)

@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/test_helper.rb'
+require "#{File.dirname(__FILE__)}/test_helper.rb"
 
 assert('lsp default command') do
   app = setup_app
@@ -23,12 +23,6 @@ assert('lsp config') do
   Mrbmacs::LspExtension.register_lsp_client(app)
   assert_equal 'ruby', app.ext.data['lsp']['ruby'].server[:command]
   assert_equal ['bbb', 'ccc'], app.ext.data['lsp']['ruby'].server[:args]
-end
-
-assert('uri_to_path') do
-  app = setup_app
-  assert_equal '', app.lsp_uri_to_path('')
-  assert_equal '/foo/bar/baz.txt', app.lsp_uri_to_path('file:///foo/bar/baz.txt')
 end
 
 assert('def lsp_get_completion_list') do

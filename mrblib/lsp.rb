@@ -22,8 +22,7 @@ module Mrbmacs
       appl.add_sci_event(Scintilla::SCN_CHARADDED) do |app, scn|
         next unless app.lsp_is_running?
 
-        app.lsp_on_type_formatting(scn['ch'].chr('UTF-8'))
-        app.lsp_send_completion_request(scn) unless app.frame.view_win.sci_autoc_active
+        app.lsp_char_added(scn)
       end
 
       appl.add_sci_event(Scintilla::SCN_MODIFIED) do |app, scn|
@@ -108,10 +107,6 @@ module Mrbmacs
       end
     end
 
-    def lsp_uri_to_path(uri)
-      uri.gsub('file://', '')
-    end
-
     def lsp_trigger_characters(provider, parameter = 'triggerCharacters')
       lang = @current_buffer.mode.name
       if !@ext.data['lsp'][lang].nil? &&
@@ -140,6 +135,17 @@ module Mrbmacs
 
     def lsp_signature_trigger_characters
       lsp_trigger_characters('signatureHelpProvider')
+    end
+
+    def lsp_char_added(scn)
+      input_char = scn['ch'].chr('UTF-8')
+      if lsp_on_type_formatting_trigger_characters.include?(input_char)
+        lsp_on_type_formatting(input_char)
+      elsif lsp_signature_trigger_characters.include?(input_char)
+        lsp_send_signature_help_request
+      else
+        lsp_send_completion_request(scn) # unless app.frame.view_win.sci_autoc_active
+      end
     end
 
     # TODO: process equests from server

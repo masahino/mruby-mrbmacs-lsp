@@ -12,5 +12,17 @@ module Mrbmacs
       @lsp_calltip_info[:start_line] = 0
       lsp_draw_calltip(@frame.view_win.sci_get_current_pos) unless list.empty?
     end
+
+    def lsp_send_signature_help_request
+      return unless lsp_is_running?
+
+      lang = @current_buffer.mode.name
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      param = {
+        'textDocument' => td,
+        'position' => lsp_position
+      }
+      @ext.data['lsp'][lang].signatureHelp(param)
+    end
   end
 end
