@@ -142,6 +142,10 @@ module Mrbmacs
       lsp_trigger_characters('signatureHelpProvider')
     end
 
+    # TODO: process equests from server
+    # Diagnostics Refresh
+    # workspace/diagnostic/refresh
+
     def lsp_read_message(io)
       @ext.data['lsp'].each_pair do |_k, v|
         next unless io == v.io

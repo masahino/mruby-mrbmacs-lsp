@@ -21,11 +21,5 @@ module Mrbmacs
       count_codeunits = @frame.view_win.sci_count_codeunits(start_of_line_pos, pos)
       { 'line' => line, 'character' => count_codeunits }
     end
-
-    def lsp_additional_edit
-      return if @lsp_text_edits.length == 0
-
-      lsp_edit_buffer(@lsp_text_edits.shift)
-    end
   end
 end
