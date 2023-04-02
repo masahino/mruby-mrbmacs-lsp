@@ -151,12 +151,16 @@ module Mrbmacs
     # TODO: process equests from server
     # Diagnostics Refresh
     # workspace/diagnostic/refresh
+    # Register Capability
+    # client/registerCapability
+    # Unregister Capability
+    # client/unregisterCapability
 
     def lsp_read_message(io)
       @ext.data['lsp'].each_pair do |_k, v|
         next unless io == v.io
 
-        headers, resp = v.recv_message
+        headers, message = v.recv_message
         if headers == {}
           @logger.error "server(#{v.server[:command]}) is not running"
           v.status = :not_found
@@ -167,17 +171,18 @@ module Mrbmacs
           @logger.error '[lsp] error'
           next
         end
-        @logger.debug resp.to_s
-        if !resp['id'].nil?
+        @logger.debug message.to_s
+        if !message['id'].nil?
           # request or response
-          id = resp['id'].to_i
+          id = message['id'].to_i
           if !v.request_buffer[id].nil?
-            lsp_response(v, id, resp)
+            lsp_response(v, id, message)
           else # request?
-            @logger.info resp.to_s
+            @logger.info '[LSP] recieve request???'
+            @logger.info message.to_s
           end
         else # notification
-          lsp_notification(v, resp)
+          lsp_notification(v, message)
         end
         break
       end

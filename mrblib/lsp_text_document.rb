@@ -49,6 +49,18 @@ module Mrbmacs
       0
     end
 
+    # DidOpenTextDocument Notification
+    # textDocument/didOpen
+    def lsp_did_open(filename)
+      lang = @current_buffer.mode.name
+      if @ext.data['lsp'][lang].status == :running
+        @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
+      end
+      @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])
+    end
+
+    # DidChangeTextDocument Notification
+    # textDocument/didChange
     def lsp_did_change_for_content_change(content_change)
       lang = @current_buffer.mode.name
       td = LSP::Parameter::VersionedTextDocumentIdentifier.new(@current_buffer.filename, 0)
@@ -71,14 +83,14 @@ module Mrbmacs
       lsp_did_change_for_content_change(lsp_content_change_event_from_scn(scn))
     end
 
-    def lsp_did_open(filename)
-      lang = @current_buffer.mode.name
-      if @ext.data['lsp'][lang].status == :running
-        @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
-      end
-      @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])
-    end
+    # WillSaveTextDocument Notification
+    # textDocument/willSave
 
+    # WillSaveWaitUntilTextDocument Request
+    # textDocument/willSave
+
+    # DidSaveTextDocument Notification
+    # textDocument/didSave
     def lsp_did_save(filename)
       return unless lsp_is_running?
 
@@ -89,5 +101,8 @@ module Mrbmacs
         }
       )
     end
+
+    # DidCloseTextDocument Notification
+    # textDocument/didClose
   end
 end

@@ -1,5 +1,15 @@
 require "#{File.dirname(__FILE__)}/test_helper.rb"
 
+assert('lsp_server_text_document_sync_kind') do
+  app = setup_app
+  server = LSP::Client.new('', {})
+  assert_equal 0, app.lsp_server_text_document_sync_kind(server)
+  server.server_capabilities['textDocumentSync'] = 1
+  assert_equal 1, app.lsp_server_text_document_sync_kind(server)
+  server.server_capabilities['textDocumentSync'] = { 'change' => 2 }
+  assert_equal 2, app.lsp_server_text_document_sync_kind(server)
+end
+
 assert('lsp_content_change_event_from_scn: insert char 1') do
   app = setup_app
   app.find_file("#{File.dirname(__FILE__)}#{File::SEPARATOR}content_change_event.txt")
