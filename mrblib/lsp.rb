@@ -167,7 +167,7 @@ module Mrbmacs
           # del_io_read_event(v.io)
           next
         end
-        if resp == nil
+        if message == nil
           @logger.error '[lsp] error'
           next
         end

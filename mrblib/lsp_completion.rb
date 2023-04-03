@@ -49,7 +49,7 @@ module Mrbmacs
         # textEdit -> insertText -> label
         if selected_item['textEdit']
           lsp_completion_text(selected_item['textEdit']['newText'])
-        elsif item['insertText']
+        elsif selected_item['insertText']
           lsp_completion_text(selected_item['insertText'])
         else
           lsp_completion_text(selected_item['label'])
