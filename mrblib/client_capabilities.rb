@@ -30,15 +30,17 @@ module Mrbmacs
             completionItem: {
               snippetSupport: false,
               commitCharactersSupport: false,
-              # documentationFormat
+              documentationFormat: ['plaintext'],
               deprecatedSupport: false,
-              preselectSupport: false
+              preselectSupport: false,
               # tagSupport:
+              insertReplaceSupport: false
+              # resolveSupport:
+              # insertTextModeSupport:
+              # labelDetailsSupport:
             },
-            insertReplaceSupport: true
-            # resolveSupport:
-            # insertTextModeSupport:
-            # labelDetailsSupport:
+            # completionItemKind
+            contextSupport: false
           },
           hover: {
             dynamicRegistration: false,
