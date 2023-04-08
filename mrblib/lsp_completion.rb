@@ -1,15 +1,17 @@
 module Mrbmacs
   # Completion
   class Application
+    def lsp_partial_input
+      current_pos = @frame.view_win.sci_get_current_pos
+      start_pos = @frame.view_win.sci_word_start_position(current_pos, true)
+      @frame.view_win.sci_get_text_range(start_pos, current_pos)
+    end
+
     def lsp_send_completion_request(scn)
       return unless lsp_is_running?
 
       lang = @current_buffer.mode.name
-      _line, col = current_line_col
-      return if col == 0
-
-      line_text = current_line_text.chomp[0..col]
-      input = line_text.split(' ').last
+      input = lsp_partial_input
       return if input.nil? || input.empty?
 
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
@@ -68,45 +70,6 @@ module Mrbmacs
       @lsp_completion_items = []
     end
 
-    def lsp_get_completion_list(req, res)
-      @logger.info res
-      _line, col = current_line_col
-      line_text = current_line_text.chomp[0..col]
-      input = if req.key?('context') &&
-                 req['context'].key?('triggerKind') &&
-                 req['context']['triggerKind'] == LSP::CompletionTriggerKind::TRIGGER_CHARACTER
-                ''
-              else
-                line_text.split(/[ #{lsp_completion_trigger_characters.join}]/).pop
-              end
-      if res.key?('result')
-        items = []
-        if res['result'].is_a?(Hash)
-          if res['result'].key?('items')
-            items = res['result']['items']
-          end
-        elsif res['result'].is_a?(Array)
-          items = res['result']
-        end
-        # candidates = res['result']['items'].map { |h|
-        candidates = items.map do |h|
-          str = ''
-          if !h['textEdit'].nil?
-            str = h['textEdit']['newText'].strip
-          elsif !h['insertText'].nil?
-            str = h['insertText'].strip
-          elsif !h['label'].nil?
-            str = h['label'].strip
-          end
-          str
-        end
-      else
-        candidates = []
-      end
-      @logger.debug candidates.to_s
-      [input.length, candidates.sort.uniq.join(@frame.view_win.sci_autoc_get_separator.chr)]
-    end
-
     def lsp_completion_max_length(completion_items, key)
       value_arr = completion_items.map { |h| h[key] }
       value_arr.compact!
@@ -119,7 +82,7 @@ module Mrbmacs
       candidates = []
       max_label_length = lsp_completion_max_length(@lsp_completion_items, 'label')
       max_detail_length = lsp_completion_max_length(@lsp_completion_items, 'detail')
-      @lsp_completion_items.sort { |a, b| a['sortText'] <=> b['sortText'] }.each do |item|
+      @lsp_completion_items.each do |item|
         label = item['label'].ljust(max_label_length)
         detail = if item['detail'].nil?
                    ''.ljust(max_detail_length)
@@ -139,6 +102,15 @@ module Mrbmacs
       @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates)
     end
 
+    def lsp_filter_completion_items(items)
+      partial_text = lsp_partial_input.downcase
+      results = []
+      items.each do |h|
+        results << h if h['label'].downcase.include?(partial_text)
+      end
+      results
+    end
+
     def lsp_process_completion_response(lsp_server, id, resp)
       @logger.debug lsp_server.request_buffer[id].to_s
       @logger.debug JSON.pretty_generate resp
@@ -147,8 +119,9 @@ module Mrbmacs
                               elsif resp['result'].is_a?(Array)
                                 resp['result']
                               end
-
+      @lsp_completion_items = lsp_filter_completion_items(@lsp_completion_items)
       return if @lsp_completion_items.nil?
+      @lsp_completion_items.sort! { |a, b| a['sortText'] <=> b['sortText'] }
 
       candidates = lsp_completion_list(lsp_server.request_buffer[id][:message]['params'])
       @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates) unless candidates.empty?
