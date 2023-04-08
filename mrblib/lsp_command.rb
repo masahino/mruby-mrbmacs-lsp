@@ -1,6 +1,52 @@
 module Mrbmacs
   # LSP commands
   module Command
+    # LSP Language Features
+    # Goto Declaration Request
+    def lsp_declaration
+      lsp_goto_command('declaration', 'declarationProvider')
+    end
+
+    # Goto Definition Request
+    def lsp_definition
+      lsp_goto_command('definition', 'definitionProvider')
+    end
+
+    # Goto Type Definition Request
+    def lsp_type_definition
+      lsp_goto_command('typeDefinition', 'typeDefinitionProvider')
+    end
+
+    # Goto Implementation Request
+    def lsp_implementation
+      lsp_goto_command('implementation', 'implementationProvider')
+    end
+
+    # Find References Request
+    def lsp_references
+      lsp_goto_command('references', 'referencesProvider')
+    end
+
+    # Prepare Call Hierarchy Request
+    # Call Hierarchy Incoming Calls
+    # Call Hierarchy Outgoing Calls
+    # Prepare Type Hierarchy Request
+    # Type Hierarchy Supertypes
+    # Type Hierarchy Subtypes
+    # Document Highlights Request
+    # Document Link Request
+    # Document Link Resolve Request
+
+    # Hover Request
+    def lsp_hover
+      return unless lsp_is_running?
+
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      param = { 'textDocument' => td, 'position' => lsp_position }
+      @ext.data['lsp'][@current_buffer.mode.name].hover(param)
+    end
+
+    # Code Lens Request
     def lsp_code_lens
       return unless lsp_is_running?
 
@@ -8,6 +54,13 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].codeLens({ 'textDocument' => td })
     end
 
+    # Code Lens Refresh Request
+
+    # Folding Range Request
+
+    # Selection Range Request
+
+    # Document Symbols Request
     def lsp_document_symbol
       return unless lsp_is_running?
 
@@ -15,26 +68,41 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].documentSymbol({ 'textDocument' => td })
     end
 
-    def lsp_declaration
-      lsp_goto_command('declaration', 'declarationProvider')
+    # Semantic Tokens
+    # Inline Value Request
+    # Inline Value Refresh Request
+    # Inlay Hint Request
+    # Inlay Hint Resolve Request
+    # Inlay Hint Refresh Request
+    # Monikers
+
+    # Completion Request
+    def lsp_completion
+      return unless lsp_is_running?
+
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      param = {
+        'textDocument' => td,
+        'position' => lsp_position,
+        'context' => { 'triggerKind' => LSP::CompletionTriggerKind[:Invoked] }
+      }
+      @ext.data['lsp'][@current_buffer.mode.name].completion(param)
     end
 
-    def lsp_definition
-      lsp_goto_command('definition', 'definitionProvider')
+    # Completion Item Resolve Request
+    # Document Diagnostics
+
+    # Signature Help Request
+    def lsp_signature_help
+      lsp_send_signature_help_request
     end
 
-    def lsp_type_definition
-      lsp_goto_command('typeDefinition', 'typeDefinitionProvider')
-    end
+    # Code Action Request
+    # Code Action Resolve Request
+    # Document Color Request
+    # Color Presentation Request
 
-    def lsp_implementation
-      lsp_goto_command('implementation', 'implementationProvider')
-    end
-
-    def lsp_references
-      lsp_goto_command('references', 'referencesProvider')
-    end
-
+    # Document Formatting Request
     def lsp_formatting
       return unless lsp_is_running?
 
@@ -48,6 +116,7 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].formatting(param)
     end
 
+    # Document Range Formatting Request
     def lsp_range_formatting
       return unless lsp_is_running?
 
@@ -67,6 +136,9 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].rangeFormatting(param)
     end
 
+    # Document on Type Formatting Request
+
+    # Rename Request
     def lsp_rename
       return unless lsp_is_running?
 
@@ -81,33 +153,19 @@ module Mrbmacs
       @ext.data['lsp'][@current_buffer.mode.name].rename(param)
     end
 
+    # Prepare Rename Request
+    # Linked Editing Range
+
+    # end of Language Features
+
+    # show server capabilities
     def lsp_server_capabilities
       return unless lsp_is_running?
 
       @logger.info JSON.pretty_generate @ext.data['lsp'][@current_buffer.mode.name].server_capabilities
     end
 
-    def lsp_hover
-      return unless lsp_is_running?
-
-      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      param = { 'textDocument' => td, 'position' => lsp_position }
-      @ext.data['lsp'][@current_buffer.mode.name].hover(param)
-    end
-
-    def lsp_completion
-      return unless lsp_is_running?
-
-      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      param = {
-        'textDocument' => td,
-        'position' => lsp_position,
-        'context' => { 'triggerKind' => LSP::CompletionTriggerKind::INVOKED,
-                       'triggerCharacter' => '' }
-      }
-      @ext.data['lsp'][@current_buffer.mode.name].completion(param)
-    end
-
+    # install new server
     def lsp_install_server(server = nil)
       lang = lsp_select_lang_for_server
       server = lsp_select_install_server(lang) if server.nil?
