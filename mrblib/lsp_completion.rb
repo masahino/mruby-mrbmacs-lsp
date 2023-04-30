@@ -41,6 +41,10 @@ module Mrbmacs
       lsp_did_change_for_content_change([{ 'range' => range, 'text' => text }])
     end
 
+    def lsp_completion_with_text_edit(text_edit)
+      lsp_process_text_edits([text_edit])
+    end
+
     def lsp_completion_select(scn)
       selected_item = @lsp_completion_items.find { |item| item['mylabel'] == scn['text'] }
 
@@ -50,7 +54,7 @@ module Mrbmacs
         @frame.view_win.sci_set_mod_event_mask(0)
         # textEdit -> insertText -> label
         if selected_item['textEdit']
-          lsp_completion_text(selected_item['textEdit']['newText'])
+          lsp_completion_with_text_edit(selected_item['textEdit'])
         elsif selected_item['insertText']
           lsp_completion_text(selected_item['insertText'])
         else
