@@ -14,11 +14,12 @@ module Mrbmacs
       installed_servers = {}
       LSP_SERVERS.each do |k, v|
         v.each do |s|
-          if !lsp_server_dir(s['command']).nil? && Dir.exist?(lsp_server_dir(s['command']))
-            installed_servers[k] = { 'command' => "#{lsp_server_dir(s['command'])}/#{s['command']}",
-                                     'options' => s['options'] }
-            break
-          end
+          server_dir = lsp_server_dir(s['command'])
+          next if server_dir.nil?
+
+          installed_servers[k] = { 'command' => "#{server_dir}/#{s['command']}",
+                                   'options' => s['options'] }
+          break
         end
       end
       installed_servers
@@ -43,14 +44,14 @@ module Mrbmacs
     end
 
     def lsp_server_dir(server, create_dir = false)
-      data_dir = lsp_data_dir
+      data_dir = @lsp_data_dir
       return nil if data_dir.nil?
 
       if create_dir && !Dir.exist?("#{data_dir}/servers")
         Dir.mkdir("#{data_dir}/servers")
       end
       if Dir.exist?("#{data_dir}/servers")
-        "#{data_dir}servers/#{server}"
+        "#{data_dir}/servers/#{server}"
       else
         nil
       end
@@ -111,7 +112,7 @@ module Mrbmacs
     end
 
     def lsp_start_installed_server(lang, command)
-      server = LSP_SERVERS[lang].filter{ |s| s['command'] == command }[0]
+      server = LSP_SERVERS[lang].filter { |s| s['command'] == command }[0]
       new_server_command = "#{lsp_server_dir(server['command'])}/#{server['command']}"
       if File.exist?(new_server_command)
         @ext.data['lsp'][lang] = LSP::Client.new(new_server_command, server['options'])
