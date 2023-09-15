@@ -2,9 +2,10 @@ module Mrbmacs
   # install LSP servers
   class Application
     def lsp_find_server(lang)
-      return false if @ext.data['lsp'][lang].nil?
-      return true if File.exist?(@ext.data['lsp'][lang].server[:command])
-      return true unless Which.which(@ext.data['lsp'][lang].server[:command]).nil?
+      # return false if @ext.data['lsp'][lang].nil?
+      return false if @ext.config['lsp'][lang].nil?
+      return true if File.exist?(@ext.config['lsp'][lang]['command'])
+      return true unless Which.which(@ext.config['lsp'][lang]['command']).nil?
 
       false
     end

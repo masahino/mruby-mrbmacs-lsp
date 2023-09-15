@@ -3,8 +3,8 @@ require "#{File.dirname(__FILE__)}/test_helper.rb"
 assert('lsp default command') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
-  assert_equal 'solargraph', app.ext.data['lsp']['ruby'].server[:command]
-  assert_equal ['stdio'], app.ext.data['lsp']['ruby'].server[:args]
+  assert_equal 'solargraph', app.ext.config['lsp']['ruby']['command']
+  assert_equal ['stdio'], app.ext.config['lsp']['ruby']['options']['args']
 end
 
 assert('lsp config') do
@@ -21,8 +21,8 @@ assert('lsp config') do
   }
 
   Mrbmacs::LspExtension.register_lsp_client(app)
-  assert_equal 'ruby', app.ext.data['lsp']['ruby'].server[:command]
-  assert_equal ['bbb', 'ccc'], app.ext.data['lsp']['ruby'].server[:args]
+  assert_equal 'ruby', app.ext.config['lsp']['ruby']['command']
+  assert_equal ['bbb', 'ccc'], app.ext.config['lsp']['ruby']['options']['args']
 end
 
 assert('lsp_completion_trigger_characters') do

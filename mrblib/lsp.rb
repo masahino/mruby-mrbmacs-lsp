@@ -76,17 +76,16 @@ module Mrbmacs
     def lsp_init
       @lsp_completion_items = []
       @lsp_calltip_info = { text: '', start_line: 0 }
+      @lsp_data_dir = lsp_data_dir(true)
       @config.use_builtin_completion = false
       @ext.data['lsp'] = {}
-      config = Mrbmacs::LspExtension::LSP_DEFAULT_CONFIG.dup
-      config.merge! @config.ext['lsp'] unless @config.ext['lsp'].nil?
-      config = lsp_installed_servers.merge config
-      config.each do |l, v|
-        # if Which.which(v['command']) != nil
-        @ext.data['lsp'][l] = LSP::Client.new(v['command'], v['options'])
-        Mrbmacs::LspExtension.set_keybind(appl, l)
-        # end
-      end
+      @ext.config['lsp'] = Mrbmacs::LspExtension::LSP_DEFAULT_CONFIG.dup
+      @ext.config['lsp'].merge! @config.ext['lsp'] unless @config.ext['lsp'].nil?
+      @ext.config['lsp'] = lsp_installed_servers.merge @ext.config['lsp']
+      # config.each do |l, v|
+      #   @ext.data['lsp'][l] = LSP::Client.new(v['command'], v['options'])
+      #   Mrbmacs::LspExtension.set_keybind(appl, l)
+      # end
     end
 
     def lsp_find_file(filename)
@@ -193,7 +192,13 @@ module Mrbmacs
       "#{File.basename(lsp_client.server[:command])}:#{lsp_client.status.to_s[0]}"
     end
 
-    def lsp_start_server(lang, filename)
+    def lsp_start_server(lang, _filename)
+      if @ext.data['lsp'][lang].nil?
+        @ext.data['lsp'][lang] = LSP::Client.new(@ext.config['lsp'][lang]['command'],
+                                                 @ext.config['lsp'][lang]['options'])
+        Mrbmacs::LspExtension.set_keybind(self, lang)
+      end
+
       if @ext.data['lsp'][lang].status == :stop
         @ext.data['lsp'][lang].start_server(
           {
