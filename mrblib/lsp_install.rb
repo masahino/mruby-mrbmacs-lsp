@@ -1,6 +1,15 @@
 module Mrbmacs
   # install LSP servers
   class Application
+    def lsp_create_directory_recursive(path)
+      unless File.directory?(path)
+        parent = File.dirname(path)
+        create_directory_recursive(parent) unless File.directory?(parent)
+
+        Dir.mkdir(path)
+      end
+    end
+
     def lsp_find_server(lang)
       # return false if @ext.data['lsp'][lang].nil?
       return false if @ext.config['lsp'][lang].nil?
@@ -34,7 +43,7 @@ module Mrbmacs
                    "#{ENV['HOME']}/.local/share/mrbmacs-lsp/"
                  end
       if create_dir && !Dir.exist?(data_dir)
-        Dir.mkdir(data_dir)
+        lsp_create_directory_recursive(data_dir)
       end
       if Dir.exist?(data_dir)
         data_dir
@@ -48,7 +57,7 @@ module Mrbmacs
       return nil if data_dir.nil?
 
       if create_dir && !Dir.exist?("#{data_dir}/servers")
-        Dir.mkdir("#{data_dir}/servers")
+        lsp_create_directory_recursive("#{data_dir}/servers")
       end
       if Dir.exist?("#{data_dir}/servers")
         "#{data_dir}/servers/#{server}"
