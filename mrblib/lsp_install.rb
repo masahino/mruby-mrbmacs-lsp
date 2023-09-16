@@ -2,11 +2,15 @@ module Mrbmacs
   # install LSP servers
   class Application
     def lsp_create_directory_recursive(path)
-      unless File.directory?(path)
-        parent = File.dirname(path)
-        create_directory_recursive(parent) unless File.directory?(parent)
-
-        Dir.mkdir(path)
+      begin 
+        unless File.directory?(path)
+          parent = File.dirname(path)
+          create_directory_recursive(parent) unless File.directory?(parent)
+          
+          Dir.mkdir(path)
+        end
+      rescue StandardError => e
+        @logger.error e
       end
     end
 
