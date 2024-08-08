@@ -59,7 +59,6 @@ module Mrbmacs
     def lsp_server_dir(server, create_dir = false)
       data_dir = @lsp_data_dir
       return nil if data_dir.nil?
-
       if create_dir && !Dir.exist?("#{data_dir}/servers")
         lsp_create_directory_recursive("#{data_dir}/servers")
       end
@@ -105,10 +104,11 @@ module Mrbmacs
 
     def lsp_select_install_server(lang)
       server_list = lsp_server_list_with_lang(lang)
-      @frame.echo_gets('server: ') do |input_text|
+      server = @frame.echo_gets('server: ') do |input_text|
         comp_list = server_list.filter { |s| s.start_with? input_text }
         [comp_list.join(@frame.echo_win.sci_autoc_get_separator.chr), input_text.length]
       end
+      server
     end
 
     def lsp_select_lang_for_server

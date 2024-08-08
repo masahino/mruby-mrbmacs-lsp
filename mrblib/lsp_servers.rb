@@ -100,6 +100,14 @@ module Mrbmacs
     ],
     'markdown' => [
       {
+        'command' => 'vscode-markdown-languageserver',
+        'requires' => ['npm']
+      },
+      {
+        'command' => 'marksman',
+        'requires' => []
+      },
+      {
         'command' => 'remark-language-server',
         'options' => { 'args' => ['--stdio'] },
         'requires' => ['npm']

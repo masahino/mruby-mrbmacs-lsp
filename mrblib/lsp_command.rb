@@ -33,17 +33,18 @@ module Mrbmacs
     # Prepare Type Hierarchy Request
     # Type Hierarchy Supertypes
     # Type Hierarchy Subtypes
+
     # Document Highlights Request
+    def lsp_highlight
+      lsp_document_position_command(:documentHighlight, 'documentHighlightProvider')
+    end
+
     # Document Link Request
     # Document Link Resolve Request
 
     # Hover Request
     def lsp_hover
-      return unless lsp_is_running?
-
-      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      param = { 'textDocument' => td, 'position' => lsp_position }
-      @ext.data['lsp'][@current_buffer.mode.name].hover(param)
+      lsp_document_position_command(:hover, 'hoverProvider')
     end
 
     # Code Lens Request
@@ -57,8 +58,21 @@ module Mrbmacs
     # Code Lens Refresh Request
 
     # Folding Range Request
+    def lsp_folding_range
+      return unless lsp_is_running?
+
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      @ext.data['lsp'][@current_buffer.mode.name].foldingRange({ 'textDocument' => td })
+    end
 
     # Selection Range Request
+    def lsp_selection_range
+      return unless lsp_is_running?
+
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      param = { 'textDocument' => td, 'positions' => [lsp_position] }
+      @ext.data['lsp'][@current_buffer.mode.name].selectionRange(param)
+    end
 
     # Document Symbols Request
     def lsp_document_symbol
@@ -74,18 +88,18 @@ module Mrbmacs
     # Inlay Hint Request
     # Inlay Hint Resolve Request
     # Inlay Hint Refresh Request
+
     # Monikers
+    def lsp_moniker
+      lsp_document_position_command(:moniker, 'monikerProvider')
+    end
 
     # Completion Request
     def lsp_completion
       return unless lsp_is_running?
 
-      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      param = {
-        'textDocument' => td,
-        'position' => lsp_position,
-        'context' => { 'triggerKind' => LSP::CompletionTriggerKind[:Invoked] }
-      }
+      param = lsp_document_position_param
+      param['context'] = { 'triggerKind' => LSP::CompletionTriggerKind[:Invoked] }
       @ext.data['lsp'][@current_buffer.mode.name].completion(param)
     end
 
@@ -172,7 +186,10 @@ module Mrbmacs
       return if server.nil?
 
       install_cmd = lsp_install_command(server)
-      return unless File.exist?(install_cmd)
+      unless File.exist?(install_cmd)
+        message "Installation command not found for #{server}."
+        return
+      end
 
       server_dir = lsp_server_dir(server, true)
       return if server_dir.nil?
@@ -186,22 +203,29 @@ module Mrbmacs
 
   # for commands
   class Application
-    include Command
-
     def lsp_goto_command(method, capability)
-      lang = @current_buffer.mode.name
-      if @ext.data['lsp'][lang].server_capabilities[capability] == false
-        message "#{capability} is not supported"
-        return nil
+      unless lsp_is_running?
+        message '[LSP] server is not running'
+        return
       end
-      if lsp_is_running?
-        td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-        param = { 'textDocument' => td, 'position' => lsp_position }
-        message "[lsp] sending \"#{method}\" message..."
-        @ext.data['lsp'][lang].send(method, param)
-      else
-        message '[lsp] server is not running'
+      unless lsp_supports_capability?(capability)
+        message "[LSP] '#{method}' is not supported"
+        return
       end
+
+      message "[LSP] sending \"#{method}\" message..."
+      @ext.data['lsp'][@current_buffer.mode.name].send(method, lsp_document_position_param)
+    end
+
+    def lsp_document_position_command(method, capability)
+      return unless lsp_is_running?
+
+      unless lsp_supports_capability?(capability)
+        message "[LSP] '#{method}' is not supported"
+        return
+      end
+
+      @ext.data['lsp'][@current_buffer.mode.name].send(method, lsp_document_position_param)
     end
   end
 end

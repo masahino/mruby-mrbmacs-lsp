@@ -12,3 +12,11 @@ assert('uri_to_path') do
   assert_equal '', app.lsp_uri_to_path('')
   assert_equal '/foo/bar/baz.txt', app.lsp_uri_to_path('file:///foo/bar/baz.txt')
 end
+
+assert('lsp_supports_capability') do
+  app = setup_app
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  app.ext.data['lsp']['irb'] = LSP::Client.new('', {})
+  assert_equal false, app.lsp_supports_capability?('monikerProvider')
+  app.ext.data['lsp']['irb'].server_capabilities['monikerProvider'] = {}
+end
