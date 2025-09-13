@@ -24,7 +24,7 @@ end
 def send_response(id, result = {})
   message = create_response_message(id, result)
   json_message = message.to_json
-  header = "Content-Length:#{json_message.length}\r\n\r\n"
+  header = "Content-Length: #{json_message.length}\r\n\r\n"
   $stdout.print header
   $stdout.print json_message
   $stdout.flush
