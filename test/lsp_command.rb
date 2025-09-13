@@ -4,6 +4,7 @@ assert('lsp_goto_command') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
   app.ext.data['lsp']['irb'] = LSP::Client.new('ruby', { 'args' => ["#{File.dirname(__FILE__)}/../misc/dummy_lsp.rb"] })
+  app.ext.data['lsp']['irb'].start_server({})
   app.ext.data['lsp']['irb'].server_capabilities['hogehogeProvider'] = false
   assert_equal nil, app.lsp_goto_command('hogehoge', 'hogehogeProvider')
   assert_equal '[LSP] server is not running', app.logger.log[:info].last
