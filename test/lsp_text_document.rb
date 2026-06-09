@@ -1,5 +1,3 @@
-require "#{File.dirname(__FILE__)}/test_helper.rb"
-
 assert('lsp_server_text_document_sync_kind') do
   app = setup_app
   server = LSP::Client.new('', {})

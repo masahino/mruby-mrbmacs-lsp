@@ -1,5 +1,3 @@
-require "#{File.dirname(__FILE__)}/test_helper.rb"
-
 assert('lsp_position') do
   app = setup_app
   app.find_file("#{File.dirname(__FILE__)}#{File::SEPARATOR}position-test.txt")

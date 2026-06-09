@@ -1,5 +1,3 @@
-require "#{File.dirname(__FILE__)}/test_helper.rb"
-
 module Mrbmacs
   class TestApp
     attr_accessor :lsp_calltip_info

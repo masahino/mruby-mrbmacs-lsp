@@ -1,5 +1,3 @@
-require "#{File.dirname(__FILE__)}/test_helper.rb"
-
 assert('lsp_completion_max_length') do
   app = setup_app
   test_data = [{ 'k1' => 'a' }, { 'k1' => 'bb' }, { 'k2' => 'ccc' }]

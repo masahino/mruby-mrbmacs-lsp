@@ -1,5 +1,3 @@
-require "#{File.dirname(__FILE__)}/test_helper.rb"
-
 assert('lsp default command') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
