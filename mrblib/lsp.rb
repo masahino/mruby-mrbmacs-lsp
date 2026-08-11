@@ -132,7 +132,7 @@ module Mrbmacs
       end
     end
 
-    def lsp_user_list_selection(scn)
+    def lsp_scn_user_list_selection(scn)
       case scn['list_type']
       when LspExtension::LSP_COMPLETION_LIST_TYPE
         lsp_completion_select(scn)
@@ -151,7 +151,7 @@ module Mrbmacs
       @ext.data['lsp'][lang].hover(param)
     end
 
-    def lsp_calltip_click(scn)
+    def lsp_scn_calltip_click(scn)
       case scn['position']
       when 1
         lsp_pageup_calltip
