@@ -5,7 +5,7 @@ module Mrbmacs
       begin 
         unless File.directory?(path)
           parent = File.dirname(path)
-          create_directory_recursive(parent) unless File.directory?(parent)
+          lsp_create_directory_recursive(parent) unless File.directory?(parent)
           
           Dir.mkdir(path)
         end
