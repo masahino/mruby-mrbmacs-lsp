@@ -63,7 +63,7 @@ module Mrbmacs
     # textDocument/didChange
     def lsp_did_change_for_content_change(content_change)
       lang = @current_buffer.mode.name
-      td = LSP::Parameter::VersionedTextDocumentIdentifier.new(@current_buffer.filename, 0)
+      td = LSP::Parameter::VersionedTextDocumentIdentifier.new(@current_buffer.filename, nil)
       text_document_sync = lsp_server_text_document_sync_kind(@ext.data['lsp'][lang])
 
       case text_document_sync
