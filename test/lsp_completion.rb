@@ -25,6 +25,24 @@ def stub_completion_input(app, text, word_start_position)
   end
 end
 
+def process_completion_items_for_test(items)
+  app = setup_app
+  server = LSP::Client.new('', {})
+  request_id = 1
+  server.request_buffer[request_id] = {
+    message: { 'params' => {} }
+  }
+  sorted_items = []
+  app.define_singleton_method(:lsp_filter_completion_items) { |completion_items| completion_items }
+  app.define_singleton_method(:lsp_completion_list) do |_request|
+    sorted_items.concat(@lsp_completion_items)
+    ''
+  end
+
+  app.lsp_process_completion_response(server, request_id, { 'result' => items })
+  sorted_items
+end
+
 assert('lsp completion request for a trigger character with empty partial input') do
   app, requests = setup_completion_request_app(['.'])
   stub_completion_input(app, 'foo.', 4)
@@ -57,6 +75,40 @@ assert('no lsp completion request for invoked completion with empty partial inpu
   app.lsp_send_completion_request({ 'ch' => ' '.ord })
 
   assert_equal 0, requests.size
+end
+
+assert('completion items are sorted by sortText') do
+  items = [
+    { 'label' => 'alpha', 'sortText' => '2' },
+    { 'label' => 'beta', 'sortText' => '1' }
+  ]
+
+  sorted_items = process_completion_items_for_test(items)
+
+  assert_equal ['beta', 'alpha'], sorted_items.map { |item| item['label'] }
+end
+
+assert('completion items without sortText are sorted by label') do
+  items = [
+    { 'label' => 'beta' },
+    { 'label' => 'alpha' }
+  ]
+
+  sorted_items = process_completion_items_for_test(items)
+
+  assert_equal ['alpha', 'beta'], sorted_items.map { |item| item['label'] }
+end
+
+assert('completion items with and without sortText are sorted together') do
+  items = [
+    { 'label' => 'alpha' },
+    { 'label' => 'beta', 'sortText' => '02' },
+    { 'label' => 'gamma', 'sortText' => '01' }
+  ]
+
+  sorted_items = process_completion_items_for_test(items)
+
+  assert_equal ['gamma', 'beta', 'alpha'], sorted_items.map { |item| item['label'] }
 end
 
 assert('lsp_completion_max_length') do

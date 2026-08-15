@@ -126,7 +126,10 @@ module Mrbmacs
                               end
       @lsp_completion_items = lsp_filter_completion_items(@lsp_completion_items)
       return if @lsp_completion_items.nil?
-      @lsp_completion_items.sort! { |a, b| a['sortText'] <=> b['sortText'] }
+
+      @lsp_completion_items.sort_by! do |item|
+        item['sortText'] || item['label']
+      end
 
       candidates = lsp_completion_list(lsp_server.request_buffer[id][:message]['params'])
       @frame.view_win.sci_userlist_show(LspExtension::LSP_COMPLETION_LIST_TYPE, candidates) unless candidates.empty?
