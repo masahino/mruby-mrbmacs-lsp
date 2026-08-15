@@ -193,6 +193,11 @@ module Mrbmacs
     # Linked Editing
     # textDocument/linkedEditingRange
 
+    # Shutdown
+    def lsp_response_shutdown(lsp_server, _id, resp)
+      lsp_server.exit
+    end
+
     def lsp_response_error(_lsp_server, _id, resp)
       error_type = LSP::ErrorCodes.key(resp['error']['code'])
       message "[#{error_type}]#{resp['error']['message']}"

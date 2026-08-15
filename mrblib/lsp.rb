@@ -176,7 +176,8 @@ module Mrbmacs
           headers, message = v.recv_message
         rescue EOFError
           # del_io_read_event(v.io)
-          v.stop_server
+          @logger.info "LSP server closed: #{File.basename(v.server[:command])}"
+          # v.stop_server
           break
         end
         if headers == {}
@@ -237,7 +238,7 @@ module Mrbmacs
       @ext.data['lsp'].each_value do |client|
         if client.status != :stop && client.status != :not_found
           client.shutdown
-          client.stop_server
+          # client.stop_server
         end
       end
     end
