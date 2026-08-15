@@ -4,7 +4,7 @@ module Mrbmacs
     def self.client_capabilities
       {
         workspace: {
-          applyEdit: true,
+          applyEdit: false,
           # workspaceEdit:
           # didChangeConfiguration:
           # didChangeWatchedFiles:
