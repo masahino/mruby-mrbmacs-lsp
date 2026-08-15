@@ -11,8 +11,6 @@ module Mrbmacs
       return unless lsp_is_running?
 
       lang = @current_buffer.mode.name
-      input = lsp_partial_input
-      return if input.nil? || input.empty?
 
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
       param = {
@@ -24,6 +22,9 @@ module Mrbmacs
         trigger_char = scn['ch'].chr('UTF-8')
         param['context'] = { 'triggerKind' => trigger_kind, 'triggerCharacter' => trigger_char }
       else
+        input = lsp_partial_input
+        return if input.nil? || input.empty?
+
         trigger_kind = LSP::CompletionTriggerKind[:Invoked] # 1
         param['context'] = { 'triggerKind' => trigger_kind }
       end
