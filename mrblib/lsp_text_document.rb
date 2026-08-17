@@ -4,8 +4,8 @@ module Mrbmacs
     def lsp_line_char_from_pos(pos)
       line = @frame.view_win.sci_line_from_position(pos)
       line_start_pos = @frame.view_win.sci_position_from_line(line)
-      tmp_text = @frame.view_win.sci_get_textrange(line_start_pos, pos)
-      [line, tmp_text.length]
+      count_codeunits = @frame.view_win.sci_count_codeunits(line_start_pos, pos)
+      [line, count_codeunits]
     end
 
     def lsp_delete_range_from_scn(scn)

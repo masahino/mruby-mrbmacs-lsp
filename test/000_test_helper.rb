@@ -157,6 +157,13 @@ module Scintilla
       tmp_text.bytesize + 1
     end
 
+    def sci_count_codeunits(start_pos, end_pos)
+      text = @text[start_pos...end_pos]
+      text.chars.inject(0) do |count, char|
+        count + (char.bytesize == 4 ? 2 : 1)
+      end
+    end
+
     def sci_get_textrange(start_pos, end_pos)
       return '' if start_pos == end_pos
 
