@@ -111,7 +111,8 @@ module Mrbmacs
       partial_text = lsp_partial_input.downcase
       results = []
       items.each do |h|
-        results << h if h['label'].downcase.include?(partial_text)
+        filter_text = h['filterText'] || h['label']
+        results << h if filter_text.downcase.include?(partial_text)
       end
       results
     end

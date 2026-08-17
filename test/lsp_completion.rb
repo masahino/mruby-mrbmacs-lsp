@@ -111,6 +111,43 @@ assert('completion items with and without sortText are sorted together') do
   assert_equal ['gamma', 'beta', 'alpha'], sorted_items.map { |item| item['label'] }
 end
 
+assert('completion items are filtered by filterText') do
+  app = setup_app
+  stub_completion_input(app, 'foo', 0)
+  items = [
+    { 'label' => 'display name', 'filterText' => 'foo' }
+  ]
+
+  filtered_items = app.lsp_filter_completion_items(items)
+
+  assert_equal ['display name'], filtered_items.map { |item| item['label'] }
+end
+
+assert('completion item filterText takes precedence over label') do
+  app = setup_app
+  stub_completion_input(app, 'foo', 0)
+  items = [
+    { 'label' => 'foo', 'filterText' => 'bar' }
+  ]
+
+  filtered_items = app.lsp_filter_completion_items(items)
+
+  assert_equal [], filtered_items
+end
+
+assert('completion items without filterText are filtered by label') do
+  app = setup_app
+  stub_completion_input(app, 'foo', 0)
+  items = [
+    { 'label' => 'foo item' },
+    { 'label' => 'bar item' }
+  ]
+
+  filtered_items = app.lsp_filter_completion_items(items)
+
+  assert_equal ['foo item'], filtered_items.map { |item| item['label'] }
+end
+
 assert('lsp_completion_max_length') do
   app = setup_app
   test_data = [{ 'k1' => 'a' }, { 'k1' => 'bb' }, { 'k2' => 'ccc' }]
