@@ -16,6 +16,8 @@ module Mrbmacs
       appl.add_command_event(:after_save_buffer) { |app, filename| app.lsp_did_save(filename) }
 
       appl.add_command_event(:before_save_buffers_kill_terminal) { |app| app.lsp_shutdown }
+
+      appl.add_command_event(:after_kill_buffer) { |app, buffer| app.lsp_kill_buffer(buffer) }
     end
 
     def self.setup_scn_event_handlers(appl)
@@ -81,8 +83,7 @@ module Mrbmacs
       lsp_did_open(filename)
     end
 
-    def lsp_is_running?
-      lang = @current_buffer.mode.name
+    def lsp_is_running?(lang = @current_buffer.mode.name)
       if !@ext.data['lsp'][lang].nil? && @ext.data['lsp'][lang].status == :running
         # @ext[:lsp].server[lang]
         true
@@ -241,6 +242,13 @@ module Mrbmacs
           # client.stop_server
         end
       end
+    end
+
+    def lsp_kill_buffer(buffer)
+      lang = buffer.mode.name
+      return unless lsp_find_server(lang)
+
+      lsp_did_close(lang, buffer.filename)
     end
   end
 end

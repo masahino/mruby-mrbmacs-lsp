@@ -8,6 +8,59 @@ assert('lsp_server_text_document_sync_kind') do
   assert_equal 2, app.lsp_server_text_document_sync_kind(server)
 end
 
+assert('lsp_kill_buffer passes the killed buffer language and filename') do
+  app = setup_app
+  buffer = Mrbmacs::Buffer.new('closed.py')
+  calls = []
+  app.define_singleton_method(:lsp_find_server) { |_lang| true }
+  app.define_singleton_method(:lsp_did_close) do |lang, filename|
+    calls << [lang, filename]
+  end
+
+  app.lsp_kill_buffer(buffer)
+
+  assert_equal [['python', buffer.filename]], calls
+end
+
+assert('lsp_did_close uses the killed buffer language') do
+  app = setup_app
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  app.current_buffer = Mrbmacs::Buffer.new('current.rb')
+  current_server = LSP::Client.new('', {})
+  current_server.status = :stop
+  target_server = LSP::Client.new('', {})
+  target_server.status = :running
+  notifications = []
+  target_server.define_singleton_method(:didClose) { |params| notifications << params }
+  app.ext.data['lsp']['ruby'] = current_server
+  app.ext.data['lsp']['python'] = target_server
+  buffer = Mrbmacs::Buffer.new('closed.py')
+
+  app.lsp_did_close('python', buffer.filename)
+
+  notified_paths = notifications.map { |params| params['textDocument'].uri.gsub('file://', '') }
+  assert_equal [buffer.filename], notified_paths
+end
+
+assert('lsp_did_close does not use a stopped target server') do
+  app = setup_app
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  app.current_buffer = Mrbmacs::Buffer.new('current.rb')
+  current_server = LSP::Client.new('', {})
+  current_server.status = :running
+  target_server = LSP::Client.new('', {})
+  target_server.status = :stop
+  notifications = []
+  target_server.define_singleton_method(:didClose) { |params| notifications << params }
+  app.ext.data['lsp']['ruby'] = current_server
+  app.ext.data['lsp']['python'] = target_server
+  buffer = Mrbmacs::Buffer.new('closed.py')
+
+  app.lsp_did_close('python', buffer.filename)
+
+  assert_equal 0, notifications.size
+end
+
 assert('lsp_content_change_event_from_scn: insert char 1') do
   app = setup_app
   app.find_file("#{File.dirname(__FILE__)}#{File::SEPARATOR}content_change_event.txt")

@@ -104,16 +104,14 @@ module Mrbmacs
 
     # DidCloseTextDocument Notification
     # textDocument/didClose
-    def lsp_did_close(filename)
-      return unless lsp_is_running?
+    def lsp_did_close(lang, filename)
+      return unless lsp_is_running?(lang)
 
-      lang = @current_buffer.mode.name
       @ext.data['lsp'][lang].didClose(
         {
           'textDocument' => LSP::Parameter::TextDocumentIdentifier.new(filename)
         }
       )
-
     end
   end
 end
