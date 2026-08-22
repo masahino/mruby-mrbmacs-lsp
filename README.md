@@ -38,7 +38,7 @@ example of ~/.mrbmacsrc
 |implementation |No|lsp_implementation|
 |references     |No|lsp_references|
 |documentHighlight|No|
-|documentSymbol |No|
+|documentSymbol |Yes|lsp_document_symbol|
 |codeAction |No|
 |codeLens |No|
 |codeLens resolve |No|
@@ -52,6 +52,9 @@ example of ~/.mrbmacsrc
 |rename |Yes|lsp_rename|
 |prepareRename |No|
 |foldingRange|No|-
+
+Document Symbol supports `SymbolInformation[]` responses. Hierarchical
+`DocumentSymbol[]` responses are not supported.
 
 ## screenshot
 
