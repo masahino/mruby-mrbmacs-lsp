@@ -227,3 +227,71 @@ assert('lsp_content_change_event_from_scn: del multi lines text') do
   }
   assert_equal cc, app.lsp_content_change_event_from_scn(scn)[0].to_h
 end
+
+assert('lsp_content_change_event_from_scn: del BMP character') do
+  app = setup_app
+  app.frame.view_win.text = ''
+  deleted_text = 'あ'
+  scn = { 'position' => 0, 'length' => deleted_text.bytesize, 'lines_added' => 0,
+          'modification_type' => 0x2012, 'text' => deleted_text }
+  cc = {
+    'text' => '',
+    'range' => {
+      'start' => { 'line' => 0, 'character' => 0 },
+      'end' => { 'line' => 0, 'character' => 1 }
+    }
+  }
+
+  assert_equal cc, app.lsp_content_change_event_from_scn(scn)[0].to_h
+end
+
+assert('lsp_content_change_event_from_scn: del surrogate pair character') do
+  app = setup_app
+  app.frame.view_win.text = ''
+  deleted_text = '😀'
+  scn = { 'position' => 0, 'length' => deleted_text.bytesize, 'lines_added' => 0,
+          'modification_type' => 0x2012, 'text' => deleted_text }
+  cc = {
+    'text' => '',
+    'range' => {
+      'start' => { 'line' => 0, 'character' => 0 },
+      'end' => { 'line' => 0, 'character' => 2 }
+    }
+  }
+
+  assert_equal cc, app.lsp_content_change_event_from_scn(scn)[0].to_h
+end
+
+assert('lsp_content_change_event_from_scn: del mixed UTF-16 characters') do
+  app = setup_app
+  app.frame.view_win.text = ''
+  deleted_text = 'Aあ😀'
+  scn = { 'position' => 0, 'length' => deleted_text.bytesize, 'lines_added' => 0,
+          'modification_type' => 0x2012, 'text' => deleted_text }
+  cc = {
+    'text' => '',
+    'range' => {
+      'start' => { 'line' => 0, 'character' => 0 },
+      'end' => { 'line' => 0, 'character' => 4 }
+    }
+  }
+
+  assert_equal cc, app.lsp_content_change_event_from_scn(scn)[0].to_h
+end
+
+assert('lsp_content_change_event_from_scn: del multiline UTF-16 text') do
+  app = setup_app
+  app.frame.view_win.text = ''
+  deleted_text = "first\n😀x"
+  scn = { 'position' => 0, 'length' => deleted_text.bytesize, 'lines_added' => -1,
+          'modification_type' => 0x2012, 'text' => deleted_text }
+  cc = {
+    'text' => '',
+    'range' => {
+      'start' => { 'line' => 0, 'character' => 0 },
+      'end' => { 'line' => 1, 'character' => 3 }
+    }
+  }
+
+  assert_equal cc, app.lsp_content_change_event_from_scn(scn)[0].to_h
+end

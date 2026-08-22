@@ -12,11 +12,12 @@ module Mrbmacs
       start_line, start_char = lsp_line_char_from_pos(scn['position'])
       end_line = start_line - scn['lines_added']
       if scn['lines_added'] == 0
-        end_char = start_char + scn['length']
+        end_char = start_char + lsp_utf16_codeunit_length(scn['text'])
       elsif scn['text'][-1] == "\n"
         end_char = 0
       else
-        end_char = scn['text'].split("\n").last.length
+        last_line = scn['text'].split("\n").last
+        end_char = lsp_utf16_codeunit_length(last_line)
       end
       LSP::Parameter::Range.new(start_line, start_char, end_line, end_char)
     end
@@ -54,6 +55,7 @@ module Mrbmacs
     def lsp_did_open(filename)
       lang = @current_buffer.mode.name
       if @ext.data['lsp'][lang].status == :running
+
         @ext.data['lsp'][lang].didOpen({ 'textDocument' => LSP::Parameter::TextDocumentItem.new(filename) })
       end
       @current_buffer.additional_info = lsp_additional_info(@ext.data['lsp'][lang])

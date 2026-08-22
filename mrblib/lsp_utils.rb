@@ -26,5 +26,13 @@ module Mrbmacs
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
       { 'textDocument' => td, 'position' => lsp_position }
     end
+
+    def lsp_utf16_codeunit_length(text)
+      length = 0
+      text.each_char do |ch|
+        length += ch.ord > 0xffff ? 2 : 1
+      end
+      length
+    end
   end
 end
