@@ -1,9 +1,18 @@
 module Mrbmacs
   class TestLspEventApp < TestApp
-    attr_reader :completion_selection, :calltip_action, :killed_buffer
+    attr_reader :completion_selection, :document_symbol_selection
+    attr_reader :calltip_action, :killed_buffer, :navigation
 
     def lsp_completion_select(scn)
       @completion_selection = scn
+    end
+
+    def lsp_document_symbol_select(scn)
+      @document_symbol_selection = scn
+    end
+
+    def lsp_navigate_to(filename, line, character)
+      @navigation = [filename, line, character]
     end
 
     def lsp_pageup_calltip
@@ -37,6 +46,31 @@ assert('dispatches user list selection to LSP completion') do
   app.call_sci_event(event)
 
   assert_same event, app.completion_selection
+end
+
+assert('dispatches user list selection to LSP document symbols') do
+  app = setup_lsp_event_app
+  event = {
+    'code' => Scintilla::SCN_USERLISTSELECTION,
+    'list_type' => Mrbmacs::LspExtension::LSP_DOCUMENT_SYMBOL_LIST_TYPE,
+    'text' => 'main [Function] :3'
+  }
+
+  app.call_sci_event(event)
+
+  assert_same event, app.document_symbol_selection
+end
+
+assert('navigates to an LSP location user list selection') do
+  app = setup_lsp_event_app
+
+  app.call_sci_event(
+    'code' => Scintilla::SCN_USERLISTSELECTION,
+    'list_type' => Mrbmacs::LspExtension::LSP_GOTO_LIST_TYPE,
+    'text' => '/workspace/main.rb,3,5'
+  )
+
+  assert_equal ['/workspace/main.rb', 2, 4], app.navigation
 end
 
 assert('dispatches calltip click to page up') do

@@ -3,6 +3,7 @@ module Mrbmacs
   class LspExtension < Extension
     LSP_GOTO_LIST_TYPE = 99
     LSP_COMPLETION_LIST_TYPE = 98
+    LSP_DOCUMENT_SYMBOL_LIST_TYPE = 97
 
     def self.register_lsp_client(appl)
       appl.lsp_init
@@ -62,6 +63,7 @@ module Mrbmacs
   class Application
     def lsp_init
       @lsp_completion_items = []
+      @lsp_document_symbol_items = []
       @lsp_calltip_info = { text: '', start_line: 0 }
       @lsp_data_dir = lsp_data_dir(true)
       @config.use_builtin_completion = false
@@ -141,10 +143,9 @@ module Mrbmacs
       when LspExtension::LSP_COMPLETION_LIST_TYPE
         lsp_completion_select(scn)
       when LspExtension::LSP_GOTO_LIST_TYPE
-        target_file, lines, col = scn['text'].split(',')
-        find_file(target_file) if current_buffer.filename != target_file
-        @frame.view_win.sci_gotopos(@frame.view_win.sci_find_column(lines.to_i - 1, col.to_i - 1))
-        recenter
+        lsp_location_select(scn)
+      when LspExtension::LSP_DOCUMENT_SYMBOL_LIST_TYPE
+        lsp_document_symbol_select(scn)
       end
     end
 

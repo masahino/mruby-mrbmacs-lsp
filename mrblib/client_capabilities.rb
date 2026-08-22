@@ -77,7 +77,10 @@ module Mrbmacs
             dynamicRegistration: false
           },
           # documentHighlight:
-          # documentSymbol:
+          documentSymbol: {
+            dynamicRegistration: false,
+            hierarchicalDocumentSymbolSupport: false
+          },
           # codeAction:
           # codeLens:
           # documentLink:

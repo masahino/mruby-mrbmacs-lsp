@@ -23,31 +23,31 @@ module Mrbmacs
     # Goto Declaration
     # textDocument/declaration
     def lsp_response_text_document_declaration(lsp_server, id, resp)
-      lsp_goto_response(lsp_server, id, resp)
+      lsp_process_location_response(lsp_server, id, resp)
     end
 
     # Goto Definition
     # textDocument/definition
     def lsp_response_text_document_definition(lsp_server, id, resp)
-      lsp_goto_response(lsp_server, id, resp)
+      lsp_process_location_response(lsp_server, id, resp)
     end
 
     # Goto Type Definition
     # textDocument/typeDefinition
     def lsp_response_text_document_type_definition(lsp_server, id, resp)
-      lsp_goto_response(lsp_server, id, resp)
+      lsp_process_location_response(lsp_server, id, resp)
     end
 
     # Goto Implementation
     # textDocument/implementation
     def lsp_response_text_document_implementation(lsp_server, id, resp)
-      lsp_goto_response(lsp_server, id, resp)
+      lsp_process_location_response(lsp_server, id, resp)
     end
 
     # Find References
     # textDocument/references
     def lsp_response_text_document_references(lsp_server, id, resp)
-      lsp_goto_response(lsp_server, id, resp)
+      lsp_process_location_response(lsp_server, id, resp)
     end
 
     # Prepare Call Hierarchy
@@ -100,6 +100,11 @@ module Mrbmacs
 
     # Document Symbols
     # textDocument/documentSymbol
+    def lsp_response_text_document_document_symbol(lsp_server, id, resp)
+      return if resp['result'].nil?
+
+      lsp_process_document_symbol_response(lsp_server, id, resp)
+    end
 
     # Semantic Tokens
     # textDocument/semanticTokens/full
