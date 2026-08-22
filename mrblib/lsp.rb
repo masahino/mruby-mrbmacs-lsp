@@ -80,6 +80,9 @@ module Mrbmacs
       return unless lsp_find_server(lang)
 
       lsp_start_server(lang, filename)
+
+      uri = LSP::Parameter::TextDocumentIdentifier.new(filename).uri
+      return if @ext.data['lsp'][lang].file_version.key?(uri)
       lsp_did_open(filename)
     end
 
