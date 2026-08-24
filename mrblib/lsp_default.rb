@@ -49,8 +49,10 @@ module Mrbmacs
     }.freeze
 
     LSP_DEFAULT_KEYMAP = {
-      'M-r' => 'lsp_references',
-      'M-d' => 'lsp_definition'
+      'M-?' => 'lsp_references',
+      'M-.' => 'lsp_definition',
+      'M-g' => 'prefix',
+      'M-g i' => 'lsp_document_symbol'
     }.freeze
   end
 end
