@@ -14,8 +14,8 @@ module Mrbmacs
       when 'window/logMessage'
         @logger.info message['params']['message']
       else
-        @logger.info "unknown method #{message}"
-        @logger.info message.to_s
+        @logger.info "[LSP] unsupported notification: #{message['method']}"
+        @logger.debug message.to_s
       end
     end
   end

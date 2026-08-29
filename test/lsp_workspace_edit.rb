@@ -20,8 +20,9 @@ end
 assert('lsp_workspace_edit does nothing without changes') do
   app, calls = setup_workspace_edit_app
 
-  app.lsp_workspace_edit({})
+  result = app.lsp_workspace_edit({})
 
+  assert_false result
   assert_equal [], calls
 end
 
@@ -31,8 +32,9 @@ assert('lsp_workspace_edit applies changes to one file and restores the buffer')
   uri = 'file:///workspace/one.rb'
   text_edits = [{ 'newText' => 'one' }]
 
-  app.lsp_workspace_edit('changes' => { uri => text_edits })
+  result = app.lsp_workspace_edit('changes' => { uri => text_edits })
 
+  assert_true result
   assert_equal [
     [:lsp_uri_to_path, uri],
     [:find_file, '/workspace/one.rb'],
@@ -49,13 +51,14 @@ assert('lsp_workspace_edit applies changes to multiple files in order') do
   first_edits = [{ 'newText' => 'one' }]
   second_edits = [{ 'newText' => 'two' }]
 
-  app.lsp_workspace_edit(
+  result = app.lsp_workspace_edit(
     'changes' => {
       first_uri => first_edits,
       second_uri => second_edits
     }
   )
 
+  assert_true result
   assert_equal [
     [:lsp_uri_to_path, first_uri],
     [:find_file, '/workspace/one.rb'],
@@ -65,4 +68,24 @@ assert('lsp_workspace_edit applies changes to multiple files in order') do
     [:lsp_process_text_edits, second_edits],
     [:switch_to_buffer, original_buffer_name]
   ], calls
+end
+
+assert('lsp_workspace_edit restores the original buffer after an error') do
+  app, calls = setup_workspace_edit_app
+  original_buffer_name = app.current_buffer.name
+  app.define_singleton_method(:lsp_process_text_edits) do |_text_edits|
+    raise 'edit failed'
+  end
+
+  error = nil
+  begin
+    app.lsp_workspace_edit(
+      'changes' => { 'file:///workspace/one.rb' => [{ 'newText' => 'one' }] }
+    )
+  rescue StandardError => e
+    error = e
+  end
+
+  assert_equal 'edit failed', error.message
+  assert_equal [:switch_to_buffer, original_buffer_name], calls.last
 end

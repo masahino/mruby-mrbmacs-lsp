@@ -81,7 +81,9 @@ module Mrbmacs
             dynamicRegistration: false,
             hierarchicalDocumentSymbolSupport: false
           },
-          # codeAction:
+          codeAction: {
+            dynamicRegistration: false
+          },
           # codeLens:
           # documentLink:
           # colorProvider:

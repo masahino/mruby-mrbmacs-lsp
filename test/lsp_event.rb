@@ -1,6 +1,6 @@
 module Mrbmacs
   class TestLspEventApp < TestApp
-    attr_reader :completion_selection, :document_symbol_selection
+    attr_reader :completion_selection, :document_symbol_selection, :code_action_selection
     attr_reader :calltip_action, :killed_buffer, :navigation
 
     def lsp_completion_select(scn)
@@ -9,6 +9,10 @@ module Mrbmacs
 
     def lsp_document_symbol_select(scn)
       @document_symbol_selection = scn
+    end
+
+    def lsp_code_action_select(scn)
+      @code_action_selection = scn
     end
 
     def lsp_navigate_to(filename, line, character)
@@ -59,6 +63,19 @@ assert('dispatches user list selection to LSP document symbols') do
   app.call_sci_event(event)
 
   assert_same event, app.document_symbol_selection
+end
+
+assert('dispatches user list selection to LSP code actions') do
+  app = setup_lsp_event_app
+  event = {
+    'code' => Scintilla::SCN_USERLISTSELECTION,
+    'list_type' => Mrbmacs::LspExtension::LSP_CODE_ACTION_LIST_TYPE,
+    'text' => 'Extract subexpression to variable'
+  }
+
+  app.call_sci_event(event)
+
+  assert_same event, app.code_action_selection
 end
 
 assert('navigates to an LSP location user list selection') do

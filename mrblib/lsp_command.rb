@@ -112,6 +112,33 @@ module Mrbmacs
     end
 
     # Code Action Request
+    def lsp_code_action
+      return unless lsp_is_running?
+
+      unless lsp_supports_capability?('codeActionProvider')
+        message "[LSP] 'codeAction' is not supported"
+        return
+      end
+
+      current_pos = @frame.view_win.sci_get_current_pos
+      start_pos, end_pos = if @mark_pos.nil?
+                             [current_pos, current_pos]
+                           else
+                             [@mark_pos, current_pos].minmax
+                           end
+      td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
+      param = {
+        'textDocument' => td,
+        'range' => {
+          'start' => lsp_position(start_pos),
+          'end' => lsp_position(end_pos)
+        },
+        'context' => { 'diagnostics' => [] }
+      }
+      message '[LSP] sending "codeAction" message...'
+      @ext.data['lsp'][@current_buffer.mode.name].codeAction(param)
+    end
+
     # Code Action Resolve Request
     # Document Color Request
     # Color Presentation Request

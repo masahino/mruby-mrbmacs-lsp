@@ -4,6 +4,7 @@ module Mrbmacs
     LSP_GOTO_LIST_TYPE = 99
     LSP_COMPLETION_LIST_TYPE = 98
     LSP_DOCUMENT_SYMBOL_LIST_TYPE = 97
+    LSP_CODE_ACTION_LIST_TYPE = 96
 
     def self.register_lsp_client(appl)
       appl.lsp_init
@@ -64,6 +65,9 @@ module Mrbmacs
     def lsp_init
       @lsp_completion_items = []
       @lsp_document_symbol_items = []
+      @lsp_code_action_items = []
+      @lsp_selected_code_action_item = nil
+      @lsp_code_action_server = nil
       @lsp_calltip_info = { text: '', start_line: 0 }
       @lsp_data_dir = lsp_data_dir(true)
       @config.use_builtin_completion = false
@@ -146,6 +150,8 @@ module Mrbmacs
         lsp_location_select(scn)
       when LspExtension::LSP_DOCUMENT_SYMBOL_LIST_TYPE
         lsp_document_symbol_select(scn)
+      when LspExtension::LSP_CODE_ACTION_LIST_TYPE
+        lsp_code_action_select(scn)
       end
     end
 
@@ -196,13 +202,16 @@ module Mrbmacs
         end
         @logger.debug message.to_s
         if !message['id'].nil?
-          # request or response
-          id = message['id'].to_i
-          if !v.request_buffer[id].nil?
-            lsp_response(v, id, message)
-          else # request?
-            @logger.info '[LSP] recieve request???'
-            @logger.info message.to_s
+          if !message['method'].nil?
+            lsp_request(v, message)
+          else
+            id = message['id'].to_i
+            if !v.request_buffer[id].nil?
+              lsp_response(v, id, message)
+            else
+              @logger.info "[LSP] unexpected response id=#{message['id']}"
+              @logger.debug message.to_s
+            end
           end
         else # notification
           lsp_notification(v, message)

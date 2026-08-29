@@ -155,6 +155,9 @@ module Mrbmacs
 
     # Code Action
     # textDocument/codeAction
+    def lsp_response_text_document_code_action(lsp_server, id, resp)
+      lsp_process_code_action_response(lsp_server, id, resp)
+    end
 
     # Code Action Resolve
     # codeAction/resolve
