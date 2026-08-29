@@ -18,29 +18,29 @@ end
 assert('lsp_formatting') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
-  app.lsp_formatting
+  assert_nil app.lsp_formatting
 end
 
 assert('lsp_range_formatting') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
-  app.lsp_range_formatting
+  assert_nil app.lsp_range_formatting
 end
 
 assert('lsp_rename') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
-  app.lsp_rename
+  assert_nil app.lsp_rename
 end
 
 assert('lsp_hover') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
-  app.lsp_hover
+  assert_nil app.lsp_hover
 end
 
 assert('lsp_completion') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)
-  app.lsp_completion
+  assert_nil app.lsp_completion
 end
