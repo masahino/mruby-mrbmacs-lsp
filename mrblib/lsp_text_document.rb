@@ -65,8 +65,9 @@ module Mrbmacs
     # textDocument/didChange
     def lsp_did_change_for_content_change(content_change)
       lang = @current_buffer.mode.name
+      lsp_server = @ext.data['lsp'][lang]
       td = LSP::Parameter::VersionedTextDocumentIdentifier.new(@current_buffer.filename, nil)
-      text_document_sync = lsp_server_text_document_sync_kind(@ext.data['lsp'][lang])
+      text_document_sync = lsp_server_text_document_sync_kind(lsp_server)
 
       case text_document_sync
       when LSP::TextDocumentSyncKind[:Full]
@@ -78,11 +79,38 @@ module Mrbmacs
         return
       end
       param = { 'textDocument' => td, 'contentChanges' => cc }
-      @ext.data['lsp'][lang].didChange(param)
+      lsp_server.didChange(param)
+      @logger.debug({
+                      event: 'lsp.didChange',
+                      uri: td.uri,
+                      version: td.version,
+                      file_version: lsp_server.file_version[td.uri],
+                      content_changes: cc.map { |change| change.respond_to?(:to_h) ? change.to_h : change }
+                    })
     end
 
     def lsp_did_change_for_scn(scn)
-      lsp_did_change_for_content_change(lsp_content_change_event_from_scn(scn))
+      uri = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename).uri
+      lsp_server = @ext.data['lsp'][@current_buffer.mode.name]
+      @logger.debug({
+                      event: 'lsp.scn_modified',
+                      uri: uri,
+                      file_version: lsp_server.file_version[uri],
+                      modification_type: scn['modification_type'],
+                      position: scn['position'],
+                      length: scn['length'],
+                      lines_added: scn['lines_added'],
+                      text: scn['text'].inspect,
+                      text_bytesize: scn['text'].bytesize
+                    })
+
+      content_change = lsp_content_change_event_from_scn(scn)
+      @logger.debug({
+                      event: 'lsp.scn_modified.content_change',
+                      uri: uri,
+                      content_changes: content_change.map(&:to_h)
+                    })
+      lsp_did_change_for_content_change(content_change)
     end
 
     # WillSaveTextDocument Notification

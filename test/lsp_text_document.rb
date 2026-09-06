@@ -295,3 +295,58 @@ assert('lsp_content_change_event_from_scn: del multiline UTF-16 text') do
 
   assert_equal cc, app.lsp_content_change_event_from_scn(scn)[0].to_h
 end
+
+assert('lsp_did_change_for_scn logs undo notification and sent incremental change') do
+  app = setup_app
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  filename = File.expand_path("#{File.dirname(__FILE__)}#{File::SEPARATOR}content_change_event.txt")
+  app.current_buffer = Mrbmacs::Buffer.new(filename)
+  app.find_file(filename)
+  server = LSP::Client.new('', {})
+  server.server_capabilities['textDocumentSync'] = { 'change' => LSP::TextDocumentSyncKind[:Incremental] }
+  uri = LSP::Parameter::TextDocumentIdentifier.new(filename).uri
+  server.file_version[uri] = 4
+  notifications = []
+  server.define_singleton_method(:send_notification) do |method, params|
+    notifications << [method, params]
+  end
+  app.ext.data['lsp'][app.current_buffer.mode.name] = server
+  scn = {
+    'position' => 0,
+    'length' => 1,
+    'lines_added' => 0,
+    'modification_type' => Scintilla::SC_MOD_DELETETEXT | Scintilla::SC_PERFORMED_UNDO,
+    'text' => 'H'
+  }
+
+  app.lsp_did_change_for_scn(scn)
+
+  assert_equal 5, server.file_version[uri]
+  assert_equal 1, notifications.size
+  assert_equal 'textDocument/didChange', notifications[0][0]
+  raw_log = app.logger.log[:debug][-3]
+  converted_log = app.logger.log[:debug][-2]
+  sent_log = app.logger.log[:debug][-1]
+  assert_equal 'lsp.scn_modified', raw_log[:event]
+  assert_equal uri, raw_log[:uri]
+  assert_equal 4, raw_log[:file_version]
+  assert_equal scn['modification_type'], raw_log[:modification_type]
+  assert_equal 0, raw_log[:position]
+  assert_equal 1, raw_log[:length]
+  assert_equal 0, raw_log[:lines_added]
+  assert_equal '"H"', raw_log[:text]
+  assert_equal 1, raw_log[:text_bytesize]
+  assert_equal 'lsp.scn_modified.content_change', converted_log[:event]
+  assert_equal({
+                 'text' => '',
+                 'range' => {
+                   'start' => { 'line' => 0, 'character' => 0 },
+                   'end' => { 'line' => 0, 'character' => 1 }
+                 }
+               }, converted_log[:content_changes][0])
+  assert_equal 'lsp.didChange', sent_log[:event]
+  assert_equal uri, sent_log[:uri]
+  assert_equal 5, sent_log[:version]
+  assert_equal 5, sent_log[:file_version]
+  assert_equal converted_log[:content_changes], sent_log[:content_changes]
+end
