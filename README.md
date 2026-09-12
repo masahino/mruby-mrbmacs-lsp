@@ -1,24 +1,24 @@
 # mruby-mrbmacs-lsp
-LSP(Language Server Protocl) extension for mrbmacs
+LSP (Language Server Protocol) extension for mrbmacs.
 
 + [mrbmacs-curses](https://github.com/masahino/mruby-bin-mrbmacs-curses)
 + [mrbmacs-gtk](https://github.com/masahino/mruby-bin-mrbmacs-gtk)
 + [mrbmacs-termbox](https://github.com/masahino/mruby-bin-mrbmacs-termbox)
++ [mrbmacs-cocoa](https://github.com/masahino/mruby-bin-mrbmacs-cocoa)
 
 ## Configuration
 
-example of ~/.mrbmacsrc
+Example for `~/.config/mrbmacs/init.rb` (or
+`$XDG_CONFIG_HOME/mrbmacs/init.rb` when set):
 ```
-@ext.config['lsp'] = {
+@config.ext['lsp'] = {
   "ruby" => {
     "command" => "solargraph",
     "options" => {"args" => ["stdio"]}
   },
   "cpp" => {
-    "command" => "cquery",
-    "options" => {
-      "initializationOptions" => {"cacheDirectory" => "/tmp/cquery/cache"}
-    }
+    "command" => "clangd",
+    "options" => {}
   },
 }
 ```
@@ -34,12 +34,12 @@ example of ~/.mrbmacsrc
 |signatureHelp  |Yes|
 |declaration    |Yes|lsp_declaration|
 |definition     |Yes|lsp_definition|
-|typeDefinition |No|lsp_type_definition|
-|implementation |No|lsp_implementation|
-|references     |No|lsp_references|
+|typeDefinition |Yes|lsp_type_definition|
+|implementation |Yes|lsp_implementation|
+|references     |Yes|lsp_references|
 |documentHighlight|No|
 |documentSymbol |Yes|lsp_document_symbol|
-|codeAction |No|
+|codeAction |Yes|lsp_code_action|
 |codeLens |No|
 |codeLens resolve |No|
 |documentLink |No|
@@ -51,10 +51,20 @@ example of ~/.mrbmacsrc
 |onTypeFormatting |No|
 |rename |Yes|lsp_rename|
 |prepareRename |No|
-|foldingRange|No|-
+|foldingRange|Request only|lsp_folding_range|
 
 Document Symbol supports `SymbolInformation[]` responses. Hierarchical
 `DocumentSymbol[]` responses are not supported.
+
+Code actions may be returned as direct `Command` values or as `CodeAction`
+values containing `edit` and/or `command`. When both are present, the edit is
+applied before the command is executed. Disabled actions are not executed.
+Commands are sent with `workspace/executeCommand`. Server requests for
+`workspace/applyEdit` are handled and answered with the original request ID.
+
+Workspace edits using `changes` are supported. `documentChanges` is not
+currently supported. A `codeAction/resolve` request can be sent when a server
+advertises it, but resolved responses are not yet applied.
 
 ## screenshot
 
