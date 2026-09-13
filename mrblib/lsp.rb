@@ -41,6 +41,10 @@ module Mrbmacs
         app.lsp_scn_dwell_start(scn)
       end
 
+      appl.add_sci_event(Scintilla::SCN_DWELLEND) do |app, scn|
+        app.lsp_scn_dwell_end(scn)
+      end
+
       appl.add_sci_event(Scintilla::SCN_USERLISTSELECTION) do |app, scn|
         app.lsp_scn_user_list_selection(scn)
       end
@@ -69,6 +73,8 @@ module Mrbmacs
       @lsp_selected_code_action_item = nil
       @lsp_code_action_server = nil
       @lsp_calltip_info = { text: '', start_line: 0 }
+      @lsp_hover_request_id = nil
+      @lsp_hover_position = nil
       @lsp_data_dir = lsp_data_dir(true)
       @config.use_builtin_completion = false
       @ext.data['lsp'] = {}
@@ -158,8 +164,15 @@ module Mrbmacs
     def lsp_scn_dwell_start(scn)
       lang = @current_buffer.mode.name
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      param = { 'textDocument' => td, 'position' => lsp_position(scn['pos']) }
-      @ext.data['lsp'][lang].hover(param)
+      param = { 'textDocument' => td, 'position' => lsp_position(scn['position']) }
+      @lsp_hover_request_id = @ext.data['lsp'][lang].hover(param)
+      @lsp_hover_position = @lsp_hover_request_id.nil? ? nil : scn['position']
+    end
+
+    def lsp_scn_dwell_end(_scn)
+      @lsp_hover_request_id = nil
+      @lsp_hover_position = nil
+      @frame.view_win.sci_calltip_cancel
     end
 
     def lsp_scn_calltip_click(scn)

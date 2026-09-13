@@ -79,11 +79,16 @@ module Mrbmacs
 
     # Hover
     # textDocument/hover
-    def lsp_response_text_document_hover(_lsp_server, _id, resp)
+    def lsp_response_text_document_hover(_lsp_server, id, resp)
+      return unless id == @lsp_hover_request_id
+
+      hover_position = @lsp_hover_position
+      @lsp_hover_request_id = nil
+      @lsp_hover_position = nil
       return if @frame.view_win.sci_autoc_active
       return if resp['result'].nil? || resp['result']['contents'].nil?
 
-      lsp_process_hover_response(resp)
+      lsp_process_hover_response(resp, hover_position)
     end
 
     # Code Lens

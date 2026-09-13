@@ -10,6 +10,8 @@ module Mrbmacs
       @logger.debug list.to_s
       @lsp_calltip_info[:text] = list.join("\n")
       @lsp_calltip_info[:start_line] = 0
+      @lsp_calltip_info[:highlight_start] = nil
+      @lsp_calltip_info[:highlight_end] = nil
       lsp_draw_calltip(@frame.view_win.sci_get_current_pos) unless list.empty?
     end
 
