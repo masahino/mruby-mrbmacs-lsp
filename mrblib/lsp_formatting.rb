@@ -3,11 +3,23 @@ module Mrbmacs
   class Application
     # formatting response
     def lsp_formatting_response(lsp_server, id, resp)
-      method = lsp_server.request_buffer[id][:message]['method']
+      request = lsp_server.request_buffer[id][:message]
+      method = request['method']
 
       @logger.info "[lsp] receive \"#{method}\""
       @logger.info resp
-      if !resp.nil? && resp.key?('result') && !resp['result'].nil?
+      return if resp.nil?
+
+      if resp.key?('result') && !resp['result'].nil?
+        return if resp['result'].empty?
+
+        uri = request['params']['textDocument'].uri
+        current_uri = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename).uri
+        unless uri == current_uri
+          @logger.error "LSP formatting skipped: current buffer differs from requested document #{uri}"
+          return false
+        end
+
         lsp_process_text_edits(resp['result'])
       elsif resp.key?('error')
         message resp['error']['message']

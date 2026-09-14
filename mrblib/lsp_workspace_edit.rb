@@ -10,7 +10,10 @@ module Mrbmacs
 
       begin
         workspace_edit['changes'].each do |uri, text_edits|
-          find_file(lsp_uri_to_path(uri))
+          unless find_file(lsp_uri_to_path(uri))
+            @logger.error "LSP workspace edit aborted: unable to open #{uri}"
+            return false
+          end
           lsp_process_text_edits(text_edits)
         end
         true
