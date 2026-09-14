@@ -44,7 +44,14 @@ module Mrbmacs
 
     # Hover Request
     def lsp_hover
-      lsp_document_position_command(:hover, 'hoverProvider')
+      return unless lsp_is_running?
+
+      unless lsp_supports_capability?('hoverProvider')
+        message "[LSP] 'hover' is not supported"
+        return
+      end
+
+      lsp_request_hover(@frame.view_win.sci_get_current_pos, :command)
     end
 
     # Code Lens Request

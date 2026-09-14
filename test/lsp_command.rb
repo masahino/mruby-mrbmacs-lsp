@@ -39,6 +39,34 @@ assert('lsp_hover') do
   assert_nil app.lsp_hover
 end
 
+assert('lsp_hover tracks a command request at the caret position') do
+  app = setup_app
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  request = nil
+  cancelled_method = nil
+  client = Object.new
+  client.define_singleton_method(:status) { :running }
+  client.define_singleton_method(:server_capabilities) { { 'hoverProvider' => true } }
+  client.define_singleton_method(:cancel_request_with_method) do |method|
+    cancelled_method = method
+  end
+  client.define_singleton_method(:hover) do |param|
+    request = param
+    51
+  end
+  app.ext.data['lsp']['irb'] = client
+  app.frame.view_win.text = "first\nsecond"
+  app.frame.view_win.test_return[Scintilla::SCI_GETCURRENTPOS] = 8
+
+  app.lsp_hover
+
+  assert_equal({ 'line' => 1, 'character' => 2 }, request['position'])
+  assert_equal 'textDocument/hover', cancelled_method
+  assert_equal 51, app.instance_variable_get(:@lsp_hover_request_id)
+  assert_equal 8, app.instance_variable_get(:@lsp_hover_position)
+  assert_equal :command, app.instance_variable_get(:@lsp_hover_trigger)
+end
+
 assert('lsp_completion') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)

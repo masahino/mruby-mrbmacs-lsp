@@ -45,7 +45,7 @@ module Mrbmacs
       str = contents.is_a?(Hash) ? contents['value'] : contents
       markdown ||= str.include?('```')
       str, highlight_start, highlight_end = lsp_simplify_hover_markdown(str) if markdown
-      str = str.lines.first(15).join
+      str = str.lines.first(15).join.sub(/\n\z/, '')
       @lsp_calltip_info[:text] = str
       @lsp_calltip_info[:start_line] = 0
       @lsp_calltip_info[:highlight_start] = highlight_start

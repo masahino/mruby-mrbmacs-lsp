@@ -85,6 +85,7 @@ module Mrbmacs
       hover_position = @lsp_hover_position
       @lsp_hover_request_id = nil
       @lsp_hover_position = nil
+      @lsp_hover_trigger = nil
       return if @frame.view_win.sci_autoc_active
       return if resp['result'].nil? || resp['result']['contents'].nil?
 

@@ -75,6 +75,7 @@ module Mrbmacs
       @lsp_calltip_info = { text: '', start_line: 0 }
       @lsp_hover_request_id = nil
       @lsp_hover_position = nil
+      @lsp_hover_trigger = nil
       @lsp_data_dir = lsp_data_dir(true)
       @config.use_builtin_completion = false
       @ext.data['lsp'] = {}
@@ -162,16 +163,33 @@ module Mrbmacs
     end
 
     def lsp_scn_dwell_start(scn)
+      lsp_request_hover(scn['position'], :dwell)
+    end
+
+    def lsp_request_hover(position, trigger)
       lang = @current_buffer.mode.name
       td = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename)
-      param = { 'textDocument' => td, 'position' => lsp_position(scn['position']) }
+      param = { 'textDocument' => td, 'position' => lsp_position(position) }
+      @ext.data['lsp'][lang].cancel_request_with_method('textDocument/hover')
       @lsp_hover_request_id = @ext.data['lsp'][lang].hover(param)
-      @lsp_hover_position = @lsp_hover_request_id.nil? ? nil : scn['position']
+      if @lsp_hover_request_id.nil?
+        @lsp_hover_position = nil
+        @lsp_hover_trigger = nil
+      else
+        @lsp_hover_position = position
+        @lsp_hover_trigger = trigger
+      end
+      @lsp_hover_request_id
     end
 
     def lsp_scn_dwell_end(_scn)
+      return unless @lsp_hover_trigger == :dwell
+
+      lang = @current_buffer.mode.name
+      @ext.data['lsp'][lang].cancel_request_with_method('textDocument/hover')
       @lsp_hover_request_id = nil
       @lsp_hover_position = nil
+      @lsp_hover_trigger = nil
       @frame.view_win.sci_calltip_cancel
     end
 

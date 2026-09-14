@@ -124,7 +124,11 @@ end
 assert('sends hover for the dwell notification position') do
   app = setup_lsp_event_app
   request = nil
+  cancelled_method = nil
   client = Object.new
+  client.define_singleton_method(:cancel_request_with_method) do |method|
+    cancelled_method = method
+  end
   client.define_singleton_method(:hover) do |param|
     request = param
     41
@@ -137,17 +141,50 @@ assert('sends hover for the dwell notification position') do
   assert_equal({ 'line' => 1, 'character' => 2 }, request['position'])
   assert_equal 41, app.instance_variable_get(:@lsp_hover_request_id)
   assert_equal 123, app.instance_variable_get(:@lsp_hover_position)
+  assert_equal :dwell, app.instance_variable_get(:@lsp_hover_trigger)
+  assert_equal 'textDocument/hover', cancelled_method
 end
 
 assert('dwell end invalidates hover and cancels the calltip') do
   app = setup_lsp_event_app
+  cancelled_method = nil
+  client = Object.new
+  client.define_singleton_method(:cancel_request_with_method) do |method|
+    cancelled_method = method
+  end
+  app.ext.data['lsp'][app.current_buffer.mode.name] = client
   app.instance_variable_set(:@lsp_hover_request_id, 41)
+  app.instance_variable_set(:@lsp_hover_position, 123)
+  app.instance_variable_set(:@lsp_hover_trigger, :dwell)
 
   app.call_sci_event('code' => Scintilla::SCN_DWELLEND, 'position' => 123)
 
   assert_nil app.instance_variable_get(:@lsp_hover_request_id)
   assert_nil app.instance_variable_get(:@lsp_hover_position)
+  assert_nil app.instance_variable_get(:@lsp_hover_trigger)
+  assert_equal 'textDocument/hover', cancelled_method
   assert_true app.frame.view_win.messages.include?(Scintilla::SCI_CALLTIPCANCEL)
+end
+
+assert('dwell end keeps hover requested by command') do
+  app = setup_lsp_event_app
+  cancelled = false
+  client = Object.new
+  client.define_singleton_method(:cancel_request_with_method) do |_method|
+    cancelled = true
+  end
+  app.ext.data['lsp'][app.current_buffer.mode.name] = client
+  app.instance_variable_set(:@lsp_hover_request_id, 41)
+  app.instance_variable_set(:@lsp_hover_position, 123)
+  app.instance_variable_set(:@lsp_hover_trigger, :command)
+
+  app.call_sci_event('code' => Scintilla::SCN_DWELLEND, 'position' => 123)
+
+  assert_equal 41, app.instance_variable_get(:@lsp_hover_request_id)
+  assert_equal 123, app.instance_variable_get(:@lsp_hover_position)
+  assert_equal :command, app.instance_variable_get(:@lsp_hover_trigger)
+  assert_false cancelled
+  assert_false app.frame.view_win.messages.include?(Scintilla::SCI_CALLTIPCANCEL)
 end
 
 assert('ignores a hover response that is no longer current') do
@@ -166,6 +203,7 @@ assert('handles only the current hover response') do
   response = { 'result' => { 'contents' => 'current hover' } }
   app.instance_variable_set(:@lsp_hover_request_id, 41)
   app.instance_variable_set(:@lsp_hover_position, 123)
+  app.instance_variable_set(:@lsp_hover_trigger, :command)
 
   app.lsp_response_text_document_hover(nil, 41, response)
 
@@ -173,6 +211,7 @@ assert('handles only the current hover response') do
   assert_equal 123, app.hover_response_position
   assert_nil app.instance_variable_get(:@lsp_hover_request_id)
   assert_nil app.instance_variable_get(:@lsp_hover_position)
+  assert_nil app.instance_variable_get(:@lsp_hover_trigger)
 end
 
 assert('dispatches killed buffer to LSP') do
