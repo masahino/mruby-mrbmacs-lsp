@@ -33,6 +33,53 @@ assert('lsp_rename') do
   assert_nil app.lsp_rename
 end
 
+assert('lsp_copy_diagnostic reports when the current line has no diagnostic') do
+  app = setup_app
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  win = app.frame.view_win
+  copied = []
+  remembered = []
+  win.text = "first\nsecond\n"
+  win.define_singleton_method(:sci_get_current_pos) { 7 }
+  win.define_singleton_method(:sci_annotation_get_text) { |_line| '' }
+  win.define_singleton_method(:sci_copytext) { |length, text| copied << [length, text] }
+  app.define_singleton_method(:remember_clipboard) { |clipboard_win| remembered << clipboard_win }
+
+  app.lsp_copy_diagnostic
+
+  assert_equal [], copied
+  assert_equal [], remembered
+  assert_equal 'No diagnostic on current line', app.logger.log[:info].last
+  assert_equal 'No diagnostic on current line', app.frame.echo_message
+end
+
+assert('lsp_copy_diagnostic copies the current line diagnostic') do
+  app = setup_app
+  Mrbmacs::LspExtension.register_lsp_client(app)
+  win = app.frame.view_win
+  copied = []
+  remembered = []
+  annotation_lines = []
+  diagnostic = "Error: unexpected token あ"
+  win.text = "first\nsecond\n"
+  win.define_singleton_method(:sci_get_current_pos) { 7 }
+  win.define_singleton_method(:sci_annotation_get_text) do |line|
+    annotation_lines << line
+    line == 1 ? diagnostic : ''
+  end
+  win.define_singleton_method(:sci_copytext) { |length, text| copied << [length, text] }
+  app.define_singleton_method(:remember_clipboard) { |clipboard_win| remembered << clipboard_win }
+
+  app.lsp_copy_diagnostic
+
+  assert_equal [1], annotation_lines
+  assert_equal [[diagnostic.bytesize, diagnostic]], copied
+  assert_equal diagnostic, app.clipboard_text
+  assert_equal [win], remembered
+  assert_equal 'Diagnostic copied', app.logger.log[:info].last
+  assert_equal 'Diagnostic copied', app.frame.echo_message
+end
+
 assert('lsp_hover') do
   app = setup_app
   Mrbmacs::LspExtension.register_lsp_client(app)

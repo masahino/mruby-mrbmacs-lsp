@@ -233,6 +233,20 @@ module Mrbmacs
       exec_shell_command('*LSPInstall*', "(cd #{server_dir} ; #{install_cmd})") do |res|
       end
     end
+
+    def lsp_copy_diagnostic
+      pos  = @frame.view_win.sci_get_current_pos
+      line = @frame.view_win.sci_line_from_position(pos)
+      diag_text = @frame.view_win.sci_annotation_get_text(line)
+      if diag_text.empty?
+        message 'No diagnostic on current line'
+        return
+      end
+      @frame.view_win.sci_copytext(diag_text.bytesize, diag_text)
+      @clipboard_text = diag_text
+      remember_clipboard(@frame.view_win)
+      message 'Diagnostic copied'
+    end
   end
 
   # for commands
