@@ -77,7 +77,6 @@ module Mrbmacs
       @lsp_hover_position = nil
       @lsp_hover_trigger = nil
       @lsp_data_dir = lsp_data_dir(true)
-      @config.use_builtin_completion = false
       @ext.data['lsp'] = {}
       @ext.config['lsp'] = Mrbmacs::LspExtension::LSP_DEFAULT_CONFIG.dup
       @ext.config['lsp'].merge! @config.ext['lsp'] unless @config.ext['lsp'].nil?
@@ -96,6 +95,7 @@ module Mrbmacs
 
       uri = LSP::Parameter::TextDocumentIdentifier.new(filename).uri
       return if @ext.data['lsp'][lang].file_version.key?(uri)
+
       lsp_did_open(filename)
     end
 
