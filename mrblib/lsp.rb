@@ -217,9 +217,10 @@ module Mrbmacs
         begin
           headers, message = v.recv_message
         rescue EOFError
-          # del_io_read_event(v.io)
           @logger.info "LSP server closed: #{File.basename(v.server[:command])}"
-          # v.stop_server
+          del_io_read_event(v.io)
+          v.status = v.status == :initializing ? :not_found : :stop
+          v.io = nil
           break
         end
         if headers == {}
