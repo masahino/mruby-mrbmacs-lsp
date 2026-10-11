@@ -6,7 +6,8 @@ class Logger
     @log = { debug: [], info: [], error: [] }
   end
 
-  def debug(message)
+  def debug(message = nil)
+    message = yield if message.nil? && block_given?
     @log[:debug].push message
   end
 

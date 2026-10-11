@@ -232,7 +232,7 @@ module Mrbmacs
           @logger.error '[lsp] error'
           next
         end
-        @logger.debug message.to_s
+        @logger.debug message
         if !message['id'].nil?
           if !message['method'].nil?
             lsp_request(v, message)

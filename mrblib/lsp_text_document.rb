@@ -80,36 +80,42 @@ module Mrbmacs
       end
       param = { 'textDocument' => td, 'contentChanges' => cc }
       lsp_server.didChange(param)
-      @logger.debug({
-                      event: 'lsp.didChange',
-                      uri: td.uri,
-                      version: td.version,
-                      file_version: lsp_server.file_version[td.uri],
-                      content_changes: cc.map { |change| change.respond_to?(:to_h) ? change.to_h : change }
-                    })
+      @logger.debug do
+        {
+          event: 'lsp.didChange',
+          uri: td.uri,
+          version: td.version,
+          file_version: lsp_server.file_version[td.uri],
+          content_changes: cc.map { |change| change.respond_to?(:to_h) ? change.to_h : change }
+        }
+      end
     end
 
     def lsp_did_change_for_scn(scn)
       uri = LSP::Parameter::TextDocumentIdentifier.new(@current_buffer.filename).uri
       lsp_server = @ext.data['lsp'][@current_buffer.mode.name]
-      @logger.debug({
-                      event: 'lsp.scn_modified',
-                      uri: uri,
-                      file_version: lsp_server.file_version[uri],
-                      modification_type: scn['modification_type'],
-                      position: scn['position'],
-                      length: scn['length'],
-                      lines_added: scn['lines_added'],
-                      text: scn['text'].inspect,
-                      text_bytesize: scn['text'].bytesize
-                    })
+      @logger.debug do
+        {
+          event: 'lsp.scn_modified',
+          uri: uri,
+          file_version: lsp_server.file_version[uri],
+          modification_type: scn['modification_type'],
+          position: scn['position'],
+          length: scn['length'],
+          lines_added: scn['lines_added'],
+          text: scn['text'].inspect,
+          text_bytesize: scn['text'].bytesize
+        }
+      end
 
       content_change = lsp_content_change_event_from_scn(scn)
-      @logger.debug({
-                      event: 'lsp.scn_modified.content_change',
-                      uri: uri,
-                      content_changes: content_change.map(&:to_h)
-                    })
+      @logger.debug do
+        {
+          event: 'lsp.scn_modified.content_change',
+          uri: uri,
+          content_changes: content_change.map(&:to_h)
+        }
+      end
       lsp_did_change_for_content_change(content_change)
     end
 
